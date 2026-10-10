@@ -1,0 +1,2512 @@
+<!doctype html>
+<html lang="nl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>TopLogger Dashboard</title>
+<!-- PWA: installeerbaar via "Zet op beginscherm" (iOS) / "App installeren" (Android). -->
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#dad4c0" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#1e1a14" media="(prefers-color-scheme: dark)">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="TopLogger">
+<link rel="apple-touch-icon" href="icons/icon-180.png">
+<link rel="icon" href="icons/icon.svg" type="image/svg+xml">
+<script src="vendor/chart.umd.min.js"></script>
+<style>
+  :root{
+    /* steen & chalk — geen crème/terracotta-default, maar de kleuren van een echte boulderhal */
+    --bg:#e7e2d2; --bg-alt:#dad4c0; --card:#f8f5ec; --border:#b7ad93; --border-soft:#cec5ac;
+    --text:#201c15; --text-dim:#5c5646; --text-faint:#8a8270;
+    --accent:#df4f19; --accent-ink:#fff8ef; --accent-2:#1f6e5a;
+    --onsight:#2f8f42; --flash:#c98420; --redpoint:#a8391f; --repeat:#807a6a;
+    --radius:14px; --radius-sm:8px;
+    --shadow:0 1px 2px rgba(30,25,15,.08), 0 8px 24px rgba(30,25,15,.08);
+    --font-body: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    --font-display: ui-monospace, "Cascadia Code", "Cascadia Mono", "SF Mono", Consolas, "IBM Plex Mono", monospace;
+    --font-head: "Bahnschrift", "SF Compact Display", "Segoe UI Semibold", "Roboto Condensed", "Arial Narrow", var(--font-body);
+    --grain: url("data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20width='140'%20height='140'%3E%3Cfilter%20id='n'%3E%3CfeTurbulence%20type='fractalNoise'%20baseFrequency='0.85'%20numOctaves='2'%20stitchTiles='stitch'/%3E%3CfeColorMatrix%20type='matrix'%20values='0%200%200%200%200%200%200%200%200%200%200%200%200%200%200%200%200%200%200.05%200'/%3E%3C/filter%3E%3Crect%20width='100%25'%20height='100%25'%20filter='url(%23n)'/%3E%3C/svg%3E");
+  }
+  :root:not([data-theme="light"]){
+    @media (prefers-color-scheme: dark){
+      --bg:#17140f; --bg-alt:#1e1a14; --card:#26221b; --border:#453f32; --border-soft:#332e24;
+      --text:#f3eee0; --text-dim:#b3a993; --text-faint:#7c735f;
+      --accent:#ff6a2e; --accent-ink:#1a0e04;
+      --onsight:#4cc26a; --flash:#f0b94d; --redpoint:#e07753; --repeat:#9a927e; --accent-2:#3fae8f;
+      --shadow:0 1px 2px rgba(0,0,0,.4), 0 10px 30px rgba(0,0,0,.4);
+    }
+  }
+  :root[data-theme="dark"]{
+    --bg:#17140f; --bg-alt:#1e1a14; --card:#26221b; --border:#453f32; --border-soft:#332e24;
+    --text:#f3eee0; --text-dim:#b3a993; --text-faint:#7c735f;
+    --accent:#ff6a2e; --accent-ink:#1a0e04;
+    --onsight:#4cc26a; --flash:#f0b94d; --redpoint:#e07753; --repeat:#9a927e; --accent-2:#3fae8f;
+    --shadow:0 1px 2px rgba(0,0,0,.4), 0 10px 30px rgba(0,0,0,.4);
+  }
+  *{box-sizing:border-box;}
+  @media (prefers-reduced-motion: no-preference){
+    .fade-in{animation:fadeIn .5s ease both;}
+    .fade-in:nth-child(2){animation-delay:.05s;}
+    .fade-in:nth-child(3){animation-delay:.1s;}
+  }
+  @keyframes fadeIn{from{opacity:0; transform:translateY(6px);} to{opacity:1; transform:translateY(0);}}
+  body{
+    margin:0; background:var(--bg) var(--grain) repeat; color:var(--text);
+    font:15px/1.5 var(--font-body);
+    -webkit-font-smoothing:antialiased;
+  }
+  a{color:var(--accent-2);}
+  :focus-visible{outline:2px solid var(--accent-2); outline-offset:2px;}
+  code, .mono{font-family:var(--font-display);}
+
+  header{
+    display:flex; align-items:center; gap:16px; flex-wrap:wrap;
+    padding:14px 24px 17px; border-bottom:1px solid var(--border); background:var(--bg-alt);
+    position:sticky; top:0; z-index:10;
+  }
+  header::after{
+    content:""; position:absolute; left:0; right:0; bottom:-4px; height:4px;
+    background:repeating-linear-gradient(135deg, var(--accent) 0 6px, transparent 6px 13px);
+    opacity:.6;
+  }
+  .wordmark{
+    font-family:var(--font-head); font-size:19px; font-weight:700; margin:0;
+    letter-spacing:.01em; white-space:nowrap; text-transform:uppercase;
+  }
+  .wordmark .dot{color:var(--accent);}
+  header .gen-at{font-size:11.5px; color:var(--text-faint); font-family:var(--font-display);}
+  .iconbtn{
+    font:inherit; color:var(--text); background:var(--card); border:1.5px solid var(--border);
+    border-radius:8px; padding:6px 10px; cursor:pointer; line-height:1; margin-left:auto;
+  }
+  .iconbtn + .iconbtn{margin-left:0;}
+  .iconbtn:hover{border-color:var(--accent-2); color:var(--accent-2);}
+  .tv-link{display:inline-flex; align-items:center; gap:6px; text-decoration:none; font-size:13px; font-weight:600;}
+  .tv-link svg{width:16px; height:16px; fill:none; stroke:currentColor; stroke-width:2; stroke-linecap:round; stroke-linejoin:round;}
+  @media (max-width:520px){ .tv-link span{display:none;} }
+
+  /* ---------- verversen in de cloud (alleen mijn eigen dashboard) ---------- */
+  .cloud-panel{
+    position:fixed; top:calc(var(--header-h) + 10px); right:16px; z-index:20; width:320px; max-width:calc(100vw - 32px);
+    background:var(--card); border:1px solid var(--border); border-radius:var(--radius); padding:16px 18px; box-shadow:var(--shadow);
+    font-size:13px;
+  }
+  .cp-head{display:flex; align-items:center; justify-content:space-between; font-family:var(--font-head); font-size:15px;}
+  .cp-close{border:0; background:none; font-size:20px; line-height:1; padding:0 2px; color:var(--text-faint);}
+  .cp-last{color:var(--text-dim); margin:4px 0 12px;}
+  .cp-last a{color:inherit;}
+  .cp-run{width:100%; background:var(--accent); border-color:var(--accent); color:var(--accent-ink); font-weight:600; padding:9px 12px;}
+  .cp-run:disabled{opacity:.6; cursor:progress;}
+  .cp-status{min-height:1.4em; margin:8px 0 12px; color:var(--text-dim);}
+  .cp-status.err{color:var(--redpoint);}
+  .cp-status.ok{color:var(--onsight);}
+  .cp-minutes{border-top:1px solid var(--border-soft); padding-top:12px;}
+  .cp-mlabel{display:flex; justify-content:space-between; gap:8px; margin-bottom:6px;}
+  .cp-mlabel span:last-child{font-family:var(--font-display); font-weight:700;}
+  .cp-meter{height:8px; border-radius:4px; background:var(--border-soft); overflow:hidden;}
+  .cp-meter div{height:100%; width:0; background:var(--accent-2); transition:width .4s;}
+  .cp-meter div.warn{background:var(--flash);}
+  .cp-meter div.full{background:var(--redpoint);}
+  .cp-note{font-size:11.5px; color:var(--text-faint); margin-top:8px;}
+  /* Telefoon: balk op één regel, want hij blijft staan tijdens het scrollen. */
+  @media (max-width:520px){
+    header{flex-wrap:nowrap; gap:8px; padding:8px 16px 10px;}
+    .wordmark{font-size:14.5px;}
+    header .gen-at{font-size:10.5px; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
+    .iconbtn{padding:5px 8px; font-size:13px;}
+  }
+  @media (max-width:380px){
+    header{gap:6px; padding-left:12px; padding-right:12px;}
+    .wordmark{font-size:13px;}
+  }
+
+  main{max-width:1120px; margin:0 auto; padding:0 24px 40px; position:relative;}
+
+  /* ---------- hero ---------- */
+  .hero{
+    display:flex; align-items:center; gap:24px; flex-wrap:wrap;
+    padding:30px 4px 26px; border-bottom:1px solid var(--border-soft); margin-bottom:28px;
+    position:relative;
+  }
+  .hero-id{display:flex; align-items:center; gap:14px; flex:1; min-width:220px;}
+  .hero img.avatar, .hero .avatar-fallback{width:56px; height:56px; border-radius:50%; object-fit:cover; background:var(--border); flex:none; border:2px solid var(--card); box-shadow:0 0 0 1.5px var(--border);}
+  .avatar-fallback{display:flex; align-items:center; justify-content:center; font-family:var(--font-head); font-weight:700; color:var(--text-dim);}
+  .hero-name{font-family:var(--font-head); font-size:24px; font-weight:700; letter-spacing:.005em;}
+  .hero-gym{font-size:13px; color:var(--text-dim);}
+  .hero-gym::before{content:"⛰ "; opacity:.7;}
+  .hero-stats{display:flex; gap:28px; flex-wrap:wrap;}
+  .hero-stat{text-align:left;}
+  .hero-stat .n{font-family:var(--font-display); font-size:26px; font-weight:700; line-height:1;}
+  .hero-stat .n .unit{font-size:14px; font-weight:500; color:var(--text-dim); margin-left:2px;}
+  .hero-stat .l{font-size:11px; text-transform:uppercase; letter-spacing:.06em; color:var(--text-faint); margin-top:4px;}
+  .flame{filter:saturate(1.3);}
+
+  section{margin-bottom:32px;}
+  section > h2{
+    font-family:var(--font-head); font-size:15px; text-transform:uppercase; letter-spacing:.03em;
+    color:var(--text); font-weight:700; margin:0 0 16px; display:flex; align-items:center; gap:8px;
+  }
+  section > h2::before{
+    content:""; width:9px; height:9px; border-radius:2px; background:var(--accent);
+    transform:rotate(45deg); flex:none;
+  }
+
+  .tabs{display:flex; gap:6px; margin-bottom:20px;}
+  .tabs button{
+    font-family:var(--font-head); cursor:pointer; border-radius:20px; padding:6px 18px; font-size:13px; font-weight:700;
+    text-transform:uppercase; letter-spacing:.02em;
+    background:var(--card); border:1.5px solid var(--border); color:var(--text);
+  }
+  .tabs button.active{background:var(--accent); border-color:var(--accent); color:var(--accent-ink);}
+
+  .stat-grid{display:grid; grid-template-columns:repeat(auto-fit,minmax(140px,1fr)); gap:10px; margin-bottom:22px;}
+  .stat-card{background:var(--card); border:1px solid var(--border); border-radius:var(--radius-sm); padding:13px 14px;}
+  .stat-card .value{font-family:var(--font-display); font-size:21px; font-weight:700;}
+  .stat-card .label{font-size:11.5px; color:var(--text-faint); margin-top:2px;}
+
+  /* ---------- grade ladder (signature: route-hangtag) ---------- */
+  .ladder-wrap{margin-bottom:24px;}
+  .ladder{display:flex; gap:10px; flex-wrap:wrap; align-items:flex-end; padding-top:6px;}
+  .ladder-chip{
+    --intensity:.4; --tilt:-1deg;
+    position:relative;
+    min-width:50px; padding:9px 10px 7px 16px; text-align:center;
+    border-radius:3px 9px 9px 3px;
+    background:color-mix(in srgb, var(--accent) calc(var(--intensity) * 100%), var(--card));
+    border:1.5px solid var(--text);
+    transform:rotate(var(--tilt));
+    box-shadow:1px 2px 0 rgba(20,15,5,.12);
+  }
+  .ladder-chip::before{
+    content:""; position:absolute; left:5px; top:50%; width:4px; height:4px; margin-top:-2px;
+    border-radius:50%; background:var(--bg); box-shadow:0 0 0 1.5px var(--text);
+  }
+  .ladder-chip:nth-child(3n){--tilt:1.2deg;} .ladder-chip:nth-child(3n+1){--tilt:-1.5deg;} .ladder-chip:nth-child(3n+2){--tilt:.4deg;}
+  .ladder-chip .g{display:block; font-family:var(--font-head); font-weight:700; font-size:15px;}
+  .ladder-chip .c{display:block; font-size:10px; font-family:var(--font-display); color:var(--text-faint); margin-top:1px;}
+  .ladder-chip.current{border-color:var(--accent-2); box-shadow:0 0 0 2px color-mix(in srgb, var(--accent-2) 35%, transparent), 1px 2px 0 rgba(20,15,5,.12);}
+  .ladder-chip.current::after{
+    content:"nu"; position:absolute; top:-10px; left:50%; transform:translateX(-50%) rotate(calc(var(--tilt) * -1));
+    font-family:var(--font-head); font-size:9px; letter-spacing:.04em; text-transform:uppercase; font-weight:700;
+    background:var(--accent-2); color:#fff; padding:1px 6px; border-radius:6px;
+  }
+  .ladder-empty{color:var(--text-faint); font-size:13px;}
+
+  .two-col{display:grid; grid-template-columns:minmax(0,1.1fr) minmax(0,.9fr); gap:24px; margin-bottom:24px;}
+  .two-col > *{min-width:0;} /* anders duwen canvas/lange namen de kolom breder dan het scherm */
+  @media (max-width:760px){.two-col{grid-template-columns:minmax(0,1fr);}}
+  h3.sub{font-size:12.5px; font-weight:600; color:var(--text-dim); margin:0 0 10px;}
+  .chart-wrap{position:relative; height:200px;}
+
+  .pill-list{list-style:none; margin:0; padding:0; display:flex; flex-direction:column; gap:7px;}
+  .pill-list li{display:flex; align-items:center; gap:10px; font-size:13px; padding:9px 11px; background:var(--bg-alt); border-radius:8px; border:1px solid var(--border-soft); min-width:0; overflow-wrap:anywhere;}
+
+  /* ---------- nieuw & verwijderd ---------- */
+  .change-list{list-style:none; margin:0; padding:0; display:flex; flex-direction:column; gap:7px;}
+  .change-list li{display:grid; grid-template-columns:18px minmax(0,1fr) auto; align-items:center; gap:10px; font-size:13px; padding:8px 11px; background:var(--card); border:1px solid var(--border-soft); border-radius:8px;}
+  .change-list li.gone{background:var(--bg-alt);}
+  .change-list li.gone .rname{text-decoration:line-through; text-decoration-color:var(--text-faint);}
+  .hold{width:16px; height:16px; border-radius:50%; border:1.5px solid var(--border); box-shadow:inset 0 0 0 1.5px rgba(255,255,255,.35);}
+  .rname{display:block; font-weight:600; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
+  .rmeta{display:block; font-size:11.5px; color:var(--text-faint); overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
+  .rright{text-align:right; white-space:nowrap;}
+  .rdate{display:block; font-size:11px; color:var(--text-faint); font-family:var(--font-display);}
+  /* ---------- ranglijst deze week ---------- */
+  .week-rank{list-style:none; margin:0; padding:0; display:flex; flex-direction:column; gap:6px;}
+  .week-rank li{display:grid; grid-template-columns:28px minmax(0,1fr) auto auto; align-items:center; gap:10px; font-size:13px; padding:7px 11px; background:var(--card); border:1px solid var(--border-soft); border-radius:8px;}
+  .week-rank .pos{font-family:var(--font-display); font-weight:700; color:var(--text-dim); text-align:right;}
+  .week-rank .who{font-weight:600; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
+  .week-rank .who small{font-weight:400; color:var(--text-faint); margin-left:6px;}
+  .week-rank .grade{font-size:11.5px; color:var(--text-faint); font-family:var(--font-display);}
+  .week-rank .n{font-family:var(--font-display); font-weight:700; min-width:3ch; text-align:right;}
+  .week-rank li.followed{border-color:var(--accent-2);}
+  .week-rank li.me{border-color:var(--accent); background:color-mix(in srgb, var(--accent) 10%, var(--card));}
+  .week-rank li.me .pos, .week-rank li.me .n{color:var(--accent);}
+  .week-rank li.gap{background:none; border:none; padding:0 11px; color:var(--text-faint); display:block; text-align:center; line-height:1;}
+  .change-note{font-size:11.5px; color:var(--text-faint); margin-top:8px;}
+  .change-scroll{max-height:420px; overflow-y:auto; padding-right:4px;}
+  .change-count{font-family:var(--font-display); color:var(--text-faint); font-weight:400;}
+  .chips{display:flex; gap:6px; flex-wrap:wrap; margin-right:14px;}
+  .chips button{font-size:12.5px; padding:4px 12px; border-radius:16px;}
+  .chips button.active{background:var(--accent-2); border-color:var(--accent-2); color:#fff;}
+
+  /* ---------- laatste sessie ---------- */
+  .session-when{margin:-6px 0 14px; font-size:14px; color:var(--text-dim);}
+  .session-when strong{font-family:var(--font-head); font-size:17px; color:var(--text);}
+  .session-when .mono{font-size:13.5px; color:var(--text);}
+  .session-list li{grid-template-columns:44px 18px 40px minmax(0,1fr) auto;}
+  .session-list .stime{font-family:var(--font-display); font-size:12px; color:var(--text-dim);}
+  .session-list .sgrade{font-family:var(--font-display); font-weight:700;}
+  .session-list li.untopped{background:var(--bg-alt);}
+  .tag.tried{--tag-color:var(--text-faint);}
+  .stat-card .delta{font-size:11px; font-family:var(--font-display); color:var(--text-faint); margin-top:3px;}
+  .stat-card .delta.up{color:var(--onsight);} .stat-card .delta.down{color:var(--redpoint);}
+  .records{display:flex; flex-wrap:wrap; gap:8px; margin-bottom:12px;}
+  .records:empty{display:none;}
+  .record{display:inline-flex; align-items:center; gap:7px; padding:5px 12px 5px 8px; border-radius:16px; font-size:12.5px; font-weight:600;
+    background:color-mix(in srgb, var(--flash) 18%, var(--card)); border:1px solid color-mix(in srgb, var(--flash) 55%, var(--border)); color:var(--text);}
+  .record::before{content:""; width:9px; height:9px; border-radius:2px; transform:rotate(45deg); background:var(--flash);}
+
+  /* ---------- uitdagingen & records ---------- */
+  .challenge-list{list-style:none; margin:0; padding:0; display:flex; flex-direction:column; gap:8px;}
+  .challenge-list li{background:var(--card); border:1px solid var(--border-soft); border-radius:8px; padding:10px 12px;}
+  .challenge-list .ctop{display:flex; justify-content:space-between; align-items:baseline; gap:10px;}
+  .challenge-list .ctitle{font-weight:600; font-size:13.5px;}
+  .challenge-list .cnum{font-family:var(--font-display); font-size:12px; color:var(--text-dim); white-space:nowrap;}
+  .challenge-list .cdetail{font-size:11.5px; color:var(--text-faint); margin-top:2px; overflow-wrap:anywhere;}
+  .challenge-list .bar{height:7px; border-radius:4px; background:var(--border-soft); margin-top:8px; overflow:hidden;}
+  .challenge-list .bar span{display:block; height:100%; border-radius:4px; background:var(--accent-2);}
+  .challenge-list li.close .bar span{background:var(--accent);}
+  .record-list li{grid-template-columns:minmax(0,1fr) auto;}
+  .record-list .rval{font-family:var(--font-display); font-weight:700; font-size:14px;}
+  .tag.new-record{--tag-color:var(--flash); margin-left:6px;}
+
+  /* ---------- volgende keer ---------- */
+  .next-grid{display:grid; grid-template-columns:repeat(auto-fit,minmax(min(100%,300px),1fr)); gap:20px;}
+  .next-list li{grid-template-columns:18px 40px minmax(0,1fr) auto; cursor:pointer; transition:border-color .15s;}
+  .next-list li:hover{border-color:var(--accent-2);}
+  .next-list .sgrade{font-family:var(--font-display); font-weight:700;}
+  .next-list .rright{font-size:11.5px; font-family:var(--font-display); color:var(--text-dim);}
+  .next-list .soon{color:var(--redpoint); font-weight:700;}
+  @media (max-width:520px){
+    .session-list .rname, .session-list .rmeta, .next-list .rname, .next-list .rmeta{white-space:normal; overflow-wrap:anywhere;}
+    .session-list li{grid-template-columns:38px 16px 34px minmax(0,1fr) auto; gap:8px;}
+  }
+  .map-dot.highlight{stroke:var(--accent); stroke-width:3; animation:dotPulse 1.2s ease-in-out 4;}
+  @keyframes dotPulse{50%{stroke-width:9; stroke-opacity:.5;}}
+
+  /* ---------- profielschakelaar ---------- */
+  .profile-switch{display:flex; gap:8px; overflow-x:auto; padding:18px 4px 4px; scrollbar-width:thin;}
+  .profile-switch button{
+    display:flex; align-items:center; gap:8px; flex:none; padding:5px 14px 5px 5px; border-radius:24px;
+    font-size:13px; font-weight:600; background:var(--card); border:1.5px solid var(--border);
+  }
+  .profile-switch button.active{background:var(--accent); border-color:var(--accent); color:var(--accent-ink);}
+  .profile-switch img.avatar, .profile-switch .avatar-fallback{width:26px; height:26px; border-radius:50%; object-fit:cover; background:var(--border); font-size:10px;}
+  .follow-card[data-switch]{cursor:pointer;}
+  .pill-list .swatch{width:9px; height:9px; border-radius:50%; flex:none; border:1px solid var(--border);}
+  .pill-list .grade{font-family:var(--font-display); font-weight:700; width:44px; flex:none;}
+  .pill-list .name{flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
+
+  .tag{font-size:10.5px; padding:2px 8px; border-radius:10px; flex:none; font-weight:600; letter-spacing:.01em;
+    border:1px solid transparent; background:color-mix(in srgb, var(--tag-color) 16%, var(--card)); color:var(--tag-color);}
+  .tag.onsight{--tag-color:var(--onsight);} .tag.flash{--tag-color:var(--flash);}
+  .tag.redpoint{--tag-color:var(--redpoint);} .tag.repeat{--tag-color:var(--repeat);}
+
+  /* ---------- terminologie ---------- */
+  .glossary{
+    display:grid; grid-template-columns:repeat(auto-fit,minmax(190px,1fr)); gap:10px;
+    background:var(--bg-alt); border:1px solid var(--border-soft); border-radius:var(--radius-sm); padding:14px 16px;
+  }
+  .glossary dt{font-family:var(--font-head); font-size:13px; letter-spacing:.01em; font-weight:700; display:flex; align-items:center; gap:6px;}
+  .glossary dt .dot{width:8px; height:8px; border-radius:50%; background:var(--dot-color, var(--text-faint));}
+  .glossary dd{margin:3px 0 0; font-size:12.5px; color:var(--text-dim);}
+
+  .tick-bar{display:flex; height:9px; border-radius:5px; overflow:hidden; margin-bottom:8px; background:var(--border-soft);}
+  .tick-bar span{height:100%;}
+  .tick-legend{display:flex; gap:14px; flex-wrap:wrap; font-size:12px; color:var(--text-dim); margin-bottom:18px;}
+  .tick-legend span.dot{display:inline-block; width:8px; height:8px; border-radius:50%; margin-right:5px; vertical-align:middle;}
+
+  /* ---------- activiteitenkalender ---------- */
+  .heatmap{display:grid; grid-template-rows:repeat(7,1fr); grid-auto-flow:column; gap:3px; overflow-x:auto; padding-bottom:6px;}
+  .heat-cell{width:11px; height:11px; border-radius:3px; background:var(--border-soft);}
+  .heat-cell:not(.zero){background:color-mix(in srgb, var(--accent) calc(var(--intensity) * 100%), var(--border-soft));}
+  .heat-legend{display:flex; align-items:center; gap:4px; font-size:11px; color:var(--text-faint); margin-top:6px;}
+  .heat-legend .heat-cell{width:9px; height:9px;}
+
+  .pill-list .community{font-size:11px; color:var(--text-faint); flex:none; font-family:var(--font-display);}
+
+  .filters{display:flex; flex-wrap:wrap; gap:8px; margin-bottom:14px;}
+  button, select, input[type=text], input[type=date]{
+    font:inherit; color:var(--text); background:var(--card); border:1.5px solid var(--border);
+    border-radius:8px; padding:6px 10px;
+  }
+  select, input[type=text], input[type=date]{cursor:text;}
+  button{cursor:pointer;}
+  button:hover{border-color:var(--accent-2);}
+
+  table{width:100%; border-collapse:collapse; font-size:13px;}
+  th, td{text-align:left; padding:9px 10px; border-bottom:1px solid var(--border-soft);}
+  th{cursor:pointer; user-select:none; color:var(--text-faint); font-weight:600; font-size:11.5px; text-transform:uppercase; letter-spacing:.04em; white-space:nowrap;}
+  th:hover{color:var(--text);}
+  th .arrow{font-size:10px; opacity:.6;}
+  td.grade-cell{font-family:var(--font-display); font-weight:700;}
+  td.date-cell{font-family:var(--font-display); font-size:12px; color:var(--text-dim);}
+  tbody tr:hover{background:var(--bg-alt);}
+  .table-wrap{overflow-x:auto;}
+  td.tags-cell{font-size:11.5px; color:var(--text-dim); min-width:140px;}
+  td.tags-cell .hold-tag{color:var(--text-faint);}
+  .empty{color:var(--text-faint); font-size:13px; padding:12px 0;}
+
+  .follow-grid{display:grid; grid-template-columns:repeat(auto-fill,minmax(240px,1fr)); gap:14px;}
+  .follow-card{background:var(--card); border:1px solid var(--border); border-radius:var(--radius-sm); padding:14px; transition:border-color .15s;}
+  .follow-card:hover{border-color:var(--accent-2);}
+  .follow-card .head{display:flex; align-items:center; gap:10px; margin-bottom:10px;}
+  .follow-card img.avatar, .follow-card .avatar-fallback{width:36px; height:36px; border-radius:50%; object-fit:cover; background:var(--border); flex:none;}
+  .follow-card .avatar-fallback{display:flex; align-items:center; justify-content:center; font-family:var(--font-display); font-size:12px; font-weight:600; color:var(--text-dim);}
+  .follow-card .name{font-weight:600; flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
+  .badges{display:flex; gap:6px; margin-bottom:8px;}
+  .badge{font-family:var(--font-head); font-weight:700; letter-spacing:.01em; font-size:11.5px; padding:2px 9px; border-radius:10px; background:var(--bg-alt); border:1px solid var(--border);}
+  .recent-row{display:flex; justify-content:space-between; font-size:12px; color:var(--text-dim); padding:2px 0;}
+  /* ---------- kudo-balans: gegeven links, ontvangen rechts, saldo erachter ---------- */
+  .kudos{background:var(--card); border:1px solid var(--border); border-radius:var(--radius-sm); padding:14px 16px; margin-top:18px;}
+  .kudos-head, .kudo-row{display:grid; grid-template-columns:minmax(80px,160px) minmax(0,240px) minmax(0,240px) minmax(56px,1fr); align-items:center; column-gap:0;}
+  .kudos-head{font-size:11.5px; color:var(--text-faint); margin-bottom:6px;}
+  .kudos-head .l{text-align:right; padding-right:8px;} .kudos-head .r{padding-left:8px;} .kudos-head .s{text-align:right;}
+  .kudo-row{min-height:30px; font-size:13px;}
+  .kudo-row .who{display:flex; align-items:center; gap:7px; overflow:hidden; white-space:nowrap; text-overflow:ellipsis; padding-right:8px;}
+  .kudo-side{position:relative; height:22px; display:flex; align-items:center;}
+  .kudo-side.given{justify-content:flex-end; border-right:1.5px solid var(--text-faint);}
+  .kudo-bar{height:14px; min-width:0;}
+  .kudo-side.given .kudo-bar{background:var(--accent); border-radius:4px 0 0 4px;}
+  .kudo-side.received .kudo-bar{background:var(--accent-2); border-radius:0 4px 4px 0;}
+  .kudo-n{font-family:var(--font-display); font-size:12px; color:var(--text-dim); padding:0 6px;}
+  .kudo-bal{text-align:right; font-family:var(--font-display); font-size:12.5px; font-weight:700;}
+  .kudo-bal small{display:block; font-family:var(--font-body); font-weight:400; font-size:10.5px; color:var(--text-faint);}
+  .kudos-note{font-size:11.5px; color:var(--text-faint); margin-top:8px;}
+  .followers-line{margin-top:14px; font-size:12px; color:var(--text-faint);}
+
+  /* ---------- wandkaart: topoboard ---------- */
+  #map-filters{align-items:center; justify-content:space-between;}
+  .map-toggle{display:flex; align-items:center; gap:6px; font-size:13px; color:var(--text-dim); cursor:pointer;}
+  .map-toggle input{cursor:pointer;}
+  .map-controls{display:flex; flex-wrap:wrap; align-items:center; gap:8px 16px;}
+  .map-grade-range{display:flex; align-items:center; gap:6px; font-size:13px; color:var(--text-dim);}
+  .map-grade-range select{cursor:pointer; padding:4px 8px;}
+  .map-count{font-size:12px; color:var(--text-faint); font-family:var(--font-display);}
+  .map-wrap{
+    position:relative; max-width:460px; margin:0 auto; padding:20px;
+    background:#2a251d;
+    border-radius:var(--radius); box-shadow:var(--shadow);
+  }
+  .map-wrap::before, .map-wrap::after, #map-corner-bl, #map-corner-br{
+    content:""; position:absolute; width:7px; height:7px; border-radius:50%;
+    background:#57503f; box-shadow:inset 0 1px 1px rgba(0,0,0,.5), 0 0 0 1.5px #17140f;
+  }
+  .map-wrap::before{left:10px; top:10px;}
+  .map-wrap::after{right:10px; top:10px;}
+  #map-corner-bl{left:10px; bottom:10px;}
+  #map-corner-br{right:10px; bottom:10px;}
+  .map-canvas{
+    background:var(--card); border-radius:6px; overflow:hidden;
+    transform:rotate(-.35deg); box-shadow:0 3px 10px rgba(0,0,0,.35), 0 1px 0 rgba(255,255,255,.06) inset;
+  }
+  .map-canvas svg{display:block; width:100%; height:auto;}
+  .map-canvas .map-region{cursor:pointer;}
+  .map-canvas .map-region:hover{filter:brightness(1.25);}
+  .map-dot{cursor:pointer; stroke:var(--card); stroke-width:3; transition:r .12s;}
+  .map-dot:hover{stroke:var(--accent-2);}
+  .map-dot.ticked{stroke:var(--onsight); stroke-width:5;}
+  .map-wall-label{
+    font-family:var(--font-head); font-weight:700; letter-spacing:.01em; fill:var(--text-dim); cursor:pointer;
+    paint-order:stroke; stroke:var(--card); stroke-width:5px; stroke-linejoin:round;
+  }
+  .map-wall-label:hover{fill:var(--accent-2);}
+  .map-dot-grade{
+    display:none; font-family:var(--font-head); font-weight:700; text-anchor:middle; dominant-baseline:central;
+    pointer-events:none; letter-spacing:-.02em;
+  }
+  .map-canvas svg.zoomed .map-dot-grade{display:block;}
+  #map-zoom-reset{
+    position:absolute; top:8px; left:8px; z-index:4; font-size:11.5px; padding:5px 12px 5px 10px;
+    font-family:var(--font-head); font-weight:700; text-transform:uppercase; letter-spacing:.02em;
+    background:var(--accent); border-color:var(--accent); color:var(--accent-ink);
+  }
+  .map-tooltip{
+    position:absolute; z-index:5; width:190px; background:var(--card); border:1.5px solid var(--text);
+    border-radius:3px 9px 9px 3px; box-shadow:2px 3px 0 rgba(20,15,5,.25); padding:10px 12px 10px 16px; font-size:12.5px; pointer-events:none;
+  }
+  .map-tooltip::before{
+    content:""; position:absolute; left:5px; top:16px; width:4px; height:4px;
+    border-radius:50%; background:var(--bg); box-shadow:0 0 0 1.5px var(--text);
+  }
+  .map-tooltip .name{font-family:var(--font-head); font-weight:700; font-size:13.5px; margin-bottom:2px;}
+  .map-tooltip .meta{color:var(--text-dim); font-size:11.5px;}
+  .map-legend{display:flex; gap:16px; flex-wrap:wrap; justify-content:center; font-size:11.5px; color:var(--text-faint); margin-top:14px;}
+  .map-legend .swatch{display:inline-block; width:10px; height:10px; border-radius:50%; margin-right:5px; vertical-align:middle;}
+  .map-legend .swatch.ticked{background:var(--text-faint); border:2px solid var(--onsight);}
+  .map-legend .swatch.todo{background:var(--text-faint); border:2px solid transparent;}
+
+  footer{max-width:1120px; margin:0 auto; padding:8px 24px 32px; color:var(--text-faint); font-size:11.5px;}
+
+  #lock-overlay{position:fixed; inset:0; display:flex; align-items:center; justify-content:center; padding:16px; background:var(--bg); z-index:60;}
+  #lock-overlay.hidden{display:none;}
+  #picker-overlay{
+    position:fixed; inset:0; background:rgba(20,17,10,.55); display:flex; align-items:center; justify-content:center;
+    z-index:100; padding:24px;
+  }
+  #picker-overlay .box, #lock-overlay .box{background:var(--card); border:1px solid var(--border); border-radius:var(--radius); padding:28px; max-width:420px; text-align:center; box-shadow:var(--shadow);}
+  #picker-overlay h2, #lock-overlay h2{margin-top:0; font-family:var(--font-head); font-size:19px; text-transform:none; letter-spacing:0; color:var(--text); display:block;}
+  #picker-overlay h2::before, #lock-overlay h2::before{content:none;}
+  #picker-overlay p, #lock-overlay p{color:var(--text-dim); font-size:13px;}
+  #picker-overlay button, #lock-overlay button{margin-top:10px; background:var(--accent); border-color:var(--accent); color:var(--accent-ink); padding:8px 18px; font-weight:600;}
+  #lock-overlay .pw{font:inherit; width:100%; padding:9px 11px; margin-top:6px; border:1.5px solid var(--border); border-radius:8px; background:var(--bg-alt); color:var(--text);}
+  #lock-overlay .remember{display:flex; gap:7px; align-items:center; justify-content:center; font-size:12.5px; color:var(--text-dim); margin-top:10px;}
+  #lock-overlay .err{color:var(--redpoint); font-size:12.5px; min-height:1.3em; margin:8px 0 0;}
+  .hidden{display:none !important;}
+
+  /* =====================================================================
+     Hal-wand: de pagina als klimwand. Boutgaten-raster op de achtergrond,
+     koppen als routetape, grades op schilderstape, grippen als greepjes,
+     kaarten met een bout in de hoek. Staat bewust onderaan: overschrijft
+     de basisstijl hierboven.
+     ===================================================================== */
+  :root{
+    --bolt-hole:rgba(45,35,20,.38); --bolt-rim:rgba(255,255,255,.55);
+    --tape:#efe6cc; --tape-ink:#1f1b13; --tape-edge:rgba(60,45,20,.18);
+    --header-h:60px;
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){--bolt-hole:rgba(0,0,0,.7); --bolt-rim:rgba(255,255,255,.08); --tape:#e8dec2;}
+  }
+  :root[data-theme="dark"]{--bolt-hole:rgba(0,0,0,.7); --bolt-rim:rgba(255,255,255,.08); --tape:#e8dec2;}
+
+  body{
+    background:
+      radial-gradient(circle at 50% 50%, var(--bolt-hole) 0 2px, var(--bolt-rim) 2.4px 3.2px, transparent 3.6px) 0 0 / 38px 38px,
+      var(--grain), var(--bg);
+  }
+
+  /* koppen = strook routetape */
+  section > h2{
+    display:inline-flex; padding:6px 16px 6px 14px; margin:0 0 18px;
+    background:var(--accent); color:var(--accent-ink); font-size:14px; letter-spacing:.05em;
+    transform:rotate(-1.2deg); transform-origin:left center;
+    clip-path:polygon(0 8%, 2% 0, 30% 5%, 60% 0, 98% 4%, 100% 0, 99% 50%, 100% 100%, 97% 94%, 65% 100%, 30% 95%, 3% 100%, 0 92%, 1.5% 50%);
+    box-shadow:0 2px 0 rgba(0,0,0,.12);
+  }
+  section > h2::before{content:none;}
+  section{margin-bottom:36px;}
+
+  /* grades = schilderstape met stift */
+  .session-list .sgrade, .next-list .sgrade, .pill-list .grade, .grade-tape{
+    display:inline-block; justify-self:start; width:auto; min-width:2.6em; text-align:center;
+    background:var(--tape); color:var(--tape-ink); font-family:var(--font-head); font-weight:700; font-size:13px;
+    padding:2px 6px 1px; transform:rotate(-2.5deg);
+    clip-path:polygon(0 6%, 8% 0, 50% 4%, 92% 0, 100% 8%, 97% 50%, 100% 92%, 90% 100%, 50% 96%, 10% 100%, 0 94%, 3% 50%);
+    box-shadow:inset 0 0 0 1px var(--tape-edge);
+  }
+  .session-list li:nth-child(2n) .sgrade, .next-list li:nth-child(2n) .sgrade, .pill-list li:nth-child(2n) .grade{transform:rotate(1.5deg);}
+
+  /* grippen = greepjes i.p.v. rondjes */
+  .hold, .pill-list .swatch, .change-list .hold{
+    border-radius:58% 42% 55% 45% / 46% 58% 42% 54%;
+    box-shadow:inset -2px -2px 0 rgba(0,0,0,.28), inset 1.5px 1.5px 0 rgba(255,255,255,.4);
+    border:1px solid rgba(0,0,0,.35);
+  }
+  .hold{width:18px; height:16px;}
+  .pill-list .swatch{width:13px; height:11px;}
+
+  /* kaarten = vastgeschroefde platen */
+  .stat-card, .challenge-list li, .follow-card, .kudos{position:relative;}
+  .stat-card::after, .challenge-list li::after, .follow-card::after{
+    content:""; position:absolute; top:8px; right:8px; width:6px; height:6px; border-radius:50%;
+    background:radial-gradient(circle at 40% 40%, var(--border) 0 1px, var(--bolt-hole) 1.5px);
+    box-shadow:0 0 0 1.5px var(--border-soft);
+  }
+  .challenge-list .ctop{padding-right:12px;}
+  .stat-card .value{font-size:23px;}
+
+  /* ---------- tabbladen ---------- */
+  .tabbar{
+    position:sticky; top:var(--header-h); z-index:9;
+    display:flex; gap:8px; padding:10px 0 12px; margin-bottom:22px;
+    background:linear-gradient(var(--bg) 70%, transparent);
+  }
+  .tabbar button{
+    display:flex; align-items:center; gap:8px; padding:8px 16px; border-radius:6px;
+    font-family:var(--font-head); font-size:13.5px; font-weight:700; text-transform:uppercase; letter-spacing:.03em;
+    background:var(--card); border:1.5px solid var(--border); color:var(--text-dim);
+  }
+  .tabbar button svg{width:18px; height:18px; fill:none; stroke:currentColor; stroke-width:1.8; stroke-linecap:round; stroke-linejoin:round; flex:none;}
+  .tabbar button:hover{color:var(--text); border-color:var(--accent-2);}
+  .tabbar button.active{
+    background:var(--accent); border-color:var(--accent); color:var(--accent-ink);
+    box-shadow:0 2px 0 rgba(0,0,0,.18);
+  }
+  .panel-empty{padding:24px 0;}
+
+  /* telefoon: tabbladen als vaste balk onderaan, zoals een app */
+  @media (max-width:760px){
+    .tabbar{
+      position:fixed; top:auto; bottom:0; left:0; right:0; z-index:20; margin:0;
+      display:grid; grid-template-columns:repeat(5, 1fr); gap:0;
+      padding:6px 4px calc(6px + env(safe-area-inset-bottom));
+      background:var(--bg-alt); border-top:1px solid var(--border);
+    }
+    .tabbar::before{
+      content:""; position:absolute; left:0; right:0; top:-5px; height:4px;
+      background:repeating-linear-gradient(135deg, var(--accent) 0 6px, transparent 6px 13px); opacity:.6;
+    }
+    .tabbar button{
+      flex-direction:column; gap:3px; padding:6px 2px; border:0; background:transparent;
+      font-size:10px; letter-spacing:.02em; border-radius:8px; min-width:0;
+    }
+    .tabbar button span{white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:100%;}
+    .tabbar button svg{width:22px; height:22px;}
+    .tabbar button.active{background:color-mix(in srgb, var(--accent) 18%, transparent); color:var(--accent); box-shadow:none;}
+    main{padding-bottom:84px;}
+    .hero{padding:16px 2px 14px; gap:12px; margin-bottom:14px;}
+    .hero img.avatar, .hero .avatar-fallback{width:44px; height:44px;}
+    .hero-name{font-size:19px;}
+    .hero-stats{gap:8px; width:100%; justify-content:space-between; flex-wrap:nowrap;}
+    .hero-stat .n{font-size:19px;}
+    .hero-stat .n .unit{font-size:11px;}
+    .hero-stat .l{font-size:9px; letter-spacing:.04em;}
+    .profile-switch{scrollbar-width:none;}
+    .profile-switch::-webkit-scrollbar{display:none;}
+    footer{padding-bottom:96px;}
+    section > h2{font-size:13px;}
+  }
+
+  /* ---------- PWA ---------- */
+  /* Als app (standalone) op iOS valt de pagina onder de notch en de home-indicator. */
+  body{padding-left:env(safe-area-inset-left); padding-right:env(safe-area-inset-right);}
+  header{padding-top:max(14px, env(safe-area-inset-top));}
+  @media (max-width:520px){
+    header{padding-top:max(8px, env(safe-area-inset-top));}
+  }
+  @media (max-width:760px){
+    .tabbar{padding-left:max(4px, env(safe-area-inset-left)); padding-right:max(4px, env(safe-area-inset-right));}
+    main{padding-bottom:calc(84px + env(safe-area-inset-bottom));}
+    footer{padding-bottom:calc(96px + env(safe-area-inset-bottom));}
+  }
+  .offline-badge{
+    font-family:var(--font-display); font-size:10.5px; line-height:1; white-space:nowrap; flex:none;
+    padding:3px 7px; border-radius:6px; border:1px dashed var(--border); color:var(--text-dim);
+  }
+  .update-banner{
+    position:fixed; left:50%; transform:translateX(-50%); z-index:30;
+    bottom:calc(16px + env(safe-area-inset-bottom));
+    display:flex; align-items:center; gap:10px; max-width:calc(100% - 32px);
+    padding:8px 8px 8px 14px; border-radius:10px; font-size:13px; white-space:nowrap;
+    background:var(--card); border:1px solid var(--border); box-shadow:var(--shadow);
+  }
+  .update-banner button{
+    font:inherit; font-weight:600; cursor:pointer; padding:5px 12px; border-radius:7px;
+    background:var(--accent); border:1px solid var(--accent); color:var(--accent-ink);
+  }
+  @media (max-width:760px){
+    .update-banner{bottom:calc(76px + env(safe-area-inset-bottom));}
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <p class="wordmark">TOPLOGGER<span class="dot">·</span>DASHBOARD</p>
+  <span id="generated-at" class="gen-at"></span>
+  <span id="offline-badge" class="offline-badge hidden" title="Geen verbinding — dit is de laatst bekende data">offline</span>
+  <button id="theme-toggle" class="iconbtn" title="Wissel licht/donker" style="margin-left:auto;">◐</button>
+  <button id="reload-btn" class="iconbtn" title="dashboard.json opnieuw laden">↻</button>
+  <button id="cloud-btn" class="iconbtn tv-link hidden" title="Data verversen en GitHub-minuten" aria-expanded="false" aria-controls="cloud-panel"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 18a4 4 0 0 1-.6-7.96A6 6 0 0 1 18 9a4.5 4.5 0 0 1-.5 9z"/><path d="M12 15v-4m-2 2 2-2 2 2"/></svg><span>Verversen</span></button>
+  <a id="tv-link" class="iconbtn tv-link hidden" target="_blank" rel="noopener" title="Scherm voor in de hal openen (Ranglijst / Routes)"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="12" rx="2"/><path d="M8 21h8M12 17v4"/></svg><span>Scherm</span></a>
+</header>
+
+<div id="cloud-panel" class="cloud-panel hidden" role="dialog" aria-label="Verversen in de cloud">
+  <div class="cp-head"><strong>Data verversen</strong><button class="cp-close" id="cp-close" aria-label="Sluiten">×</button></div>
+  <div class="cp-last" id="cp-last">…</div>
+  <button class="cp-run" id="cp-run">Ververs nu</button>
+  <div class="cp-status" id="cp-status" aria-live="polite"></div>
+  <div class="cp-minutes">
+    <div class="cp-mlabel"><span>GitHub-minuten deze maand</span><span id="cp-mnum">…</span></div>
+    <div class="cp-meter"><div id="cp-mbar"></div></div>
+    <div class="cp-note" id="cp-mnote"></div>
+  </div>
+  <div class="cp-note">Automatisch: elke ochtend, en 's avonds elk uur. Een verversing kost ongeveer 1 minuut.</div>
+</div>
+
+<main id="app" class="hidden">
+
+  <nav class="profile-switch" id="profile-switch" aria-label="Wiens dashboard"></nav>
+
+  <div class="hero fade-in" id="hero"></div>
+
+  <nav class="tabbar" id="tabbar" role="tablist" aria-label="Onderdelen">
+    <button role="tab" data-tab="sessie" aria-controls="panel-sessie"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="13" r="8"/><path d="M12 9v4l3 2M9 2h6"/></svg><span>Sessie</span></button>
+    <button role="tab" data-tab="voortgang" aria-controls="panel-voortgang"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 20h18M5 16l5-5 4 3 6-7"/><path d="M15 7h5v5"/></svg><span>Voortgang</span></button>
+    <button role="tab" data-tab="hal" aria-controls="panel-hal"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8" cy="8" r="1.6"/><circle cx="15" cy="10" r="1.6"/><circle cx="10" cy="15" r="1.6"/><circle cx="16" cy="17" r="1.6"/></svg><span>In de hal</span></button>
+    <button role="tab" data-tab="logboek" aria-controls="panel-logboek"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 4h11a3 3 0 0 1 3 3v13H8a3 3 0 0 1-3-3z"/><path d="M5 17a3 3 0 0 1 3-3h11M9 8h6"/></svg><span>Logboek</span></button>
+    <button role="tab" data-tab="crew" aria-controls="panel-crew"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="9" cy="8" r="3.2"/><path d="M3 20c0-3.3 2.7-6 6-6s6 2.7 6 6"/><circle cx="17" cy="9" r="2.5"/><path d="M15.5 14.2A5 5 0 0 1 21 19"/></svg><span>Crew</span></button>
+  </nav>
+
+  <div class="panel hidden" id="panel-sessie" role="tabpanel" data-tab="sessie">
+  <section id="last-session-section" class="fade-in hidden">
+    <h2>Laatste sessie</h2>
+    <p class="session-when" id="last-session-when"></p>
+    <div class="records" id="last-session-records"></div>
+    <div class="stat-grid" id="last-session-stats"></div>
+    <ul class="change-list session-list" id="last-session-list"></ul>
+    <p class="change-note" id="last-session-note"></p>
+  </section>
+  <div class="empty panel-empty hidden" id="last-session-empty">Nog geen sessie gevonden.</div>
+  </div>
+
+  <div class="panel hidden" id="panel-voortgang" role="tabpanel" data-tab="voortgang">
+  <section id="progress-section" class="fade-in">
+    <h2>Niveau &amp; grades</h2>
+    <div class="tabs" id="progress-tabs">
+      <button data-type="route" class="active">Routes</button>
+      <button data-type="boulder">Boulders</button>
+    </div>
+
+    <div class="stat-grid" id="progress-stats"></div>
+
+    <div class="ladder-wrap">
+      <h3 class="sub">Grade-verdeling</h3>
+      <div class="ladder" id="grade-ladder"></div>
+    </div>
+
+    <div>
+      <h3 class="sub">Aandeel per tick-type</h3>
+      <div class="tick-bar" id="tick-bar"></div>
+      <div class="tick-legend" id="tick-legend"></div>
+    </div>
+
+    <div class="two-col">
+      <div>
+        <h3 class="sub">Tops per week</h3>
+        <div class="chart-wrap"><canvas id="weekly-chart"></canvas></div>
+      </div>
+      <div>
+        <h3 class="sub">Beste beklimmingen</h3>
+        <ul class="pill-list" id="top-ascends-list"></ul>
+      </div>
+    </div>
+
+    <div class="two-col">
+      <div>
+        <h3 class="sub">Grade-progressie (all-time)</h3>
+        <div class="chart-wrap"><canvas id="history-chart"></canvas></div>
+      </div>
+      <div>
+        <h3 class="sub">Terminologie</h3>
+        <dl class="glossary" id="glossary"></dl>
+      </div>
+    </div>
+  </section>
+
+  <section id="challenges-section" class="fade-in hidden">
+    <h2>Uitdagingen &amp; records</h2>
+    <div class="two-col">
+      <div>
+        <h3 class="sub">Uitdagingen</h3>
+        <ul class="challenge-list" id="challenge-list"></ul>
+      </div>
+      <div>
+        <h3 class="sub">Persoonlijke records</h3>
+        <ul class="change-list record-list" id="record-list"></ul>
+        <p class="change-note" id="record-note"></p>
+      </div>
+    </div>
+  </section>
+  </div>
+
+  <div class="panel hidden" id="panel-hal" role="tabpanel" data-tab="hal">
+  <section id="next-up-section" class="fade-in hidden">
+    <h2>Volgende keer</h2>
+    <div class="tabs" id="next-up-tabs"></div>
+    <p class="session-when" id="next-up-level"></p>
+    <div class="next-grid">
+      <div>
+        <h3 class="sub">Projecten, wat het eerst weggaat bovenaan</h3>
+        <ul class="change-list next-list" id="next-up-projects"></ul>
+      </div>
+      <div>
+        <h3 class="sub">Nog niet geprobeerd, best gewaardeerd</h3>
+        <ul class="change-list next-list" id="next-up-suggestions"></ul>
+      </div>
+      <div>
+        <h3 class="sub" id="next-up-new-title">Nieuw sinds de laatste sessie</h3>
+        <ul class="change-list next-list" id="next-up-new"></ul>
+      </div>
+    </div>
+    <p class="change-note">Klik op een route om hem op de wandkaart te zien.</p>
+  </section>
+
+  <section id="week-rank-section" class="fade-in hidden">
+    <h2>Ranglijst deze week</h2>
+    <div class="tabs" id="week-rank-tabs"></div>
+    <ol class="week-rank" id="week-rank-list"></ol>
+    <p class="change-note" id="week-rank-note"></p>
+  </section>
+
+  <section id="map-section" class="fade-in">
+    <h2>Wandkaart</h2>
+    <div class="filters" id="map-filters">
+      <div class="tabs" id="map-tabs"></div>
+      <div class="map-controls">
+        <label class="map-grade-range">grade
+          <select id="map-grade-min" aria-label="Laagste grade"><option value="">laagst</option></select>
+          <span aria-hidden="true">–</span>
+          <select id="map-grade-max" aria-label="Hoogste grade"><option value="">hoogst</option></select>
+        </label>
+        <label class="map-toggle"><input type="checkbox" id="map-only-todo"> alleen nog niet gedaan</label>
+        <span class="map-count" id="map-count"></span>
+      </div>
+    </div>
+    <div class="map-wrap" id="map-wrap">
+      <span id="map-corner-bl" aria-hidden="true"></span>
+      <span id="map-corner-br" aria-hidden="true"></span>
+      <button id="map-zoom-reset" class="iconbtn hidden">↺ hele hal</button>
+      <div class="map-canvas" id="map-canvas"></div>
+      <div class="map-tooltip hidden" id="map-tooltip"></div>
+    </div>
+    <div class="map-legend" id="map-legend">
+      <span><span class="swatch ticked"></span><span id="map-legend-who">door jou geklommen</span></span>
+      <span><span class="swatch todo"></span>nog niet gedaan</span>
+      <span>kleur van de stip = kleur van de grip</span>
+    </div>
+    <div class="empty hidden" id="map-empty">Nog geen wandkaart-data opgehaald — draai <code>fetch.py</code> opnieuw.</div>
+  </section>
+
+  <section id="changes-section" class="fade-in">
+    <h2>Nieuw &amp; verwijderd</h2>
+    <div class="filters">
+      <div class="chips" id="changes-period">
+        <button data-days="7">7 dagen</button>
+        <button data-days="30" class="active">30 dagen</button>
+        <button data-days="90">90 dagen</button>
+        <button data-days="0">Alles</button>
+      </div>
+      <div class="chips" id="changes-type">
+        <button data-type="" class="active">Alle types</button>
+        <button data-type="route">Routes</button>
+        <button data-type="boulder">Boulders</button>
+      </div>
+    </div>
+    <div class="two-col">
+      <div>
+        <h3 class="sub">Nieuw geplaatst <span class="change-count" id="newest-count"></span></h3>
+        <div class="change-scroll"><ul class="change-list" id="newest-list"></ul></div>
+      </div>
+      <div>
+        <h3 class="sub">Verwijderd <span class="change-count" id="removed-count"></span></h3>
+        <div class="change-scroll"><ul class="change-list" id="removed-list"></ul></div>
+        <div class="change-note" id="removed-note"></div>
+      </div>
+    </div>
+  </section>
+  </div>
+
+  <div class="panel hidden" id="panel-logboek" role="tabpanel" data-tab="logboek">
+  <section id="activity-section" class="fade-in">
+    <h2>Activiteit</h2>
+    <div class="stat-grid" id="activity-stats"></div>
+    <div>
+      <div>
+        <h3 class="sub">Klimdagen (laatste ~4 maanden)</h3>
+        <div class="heatmap" id="heatmap"></div>
+        <div class="heat-legend">minder <span class="heat-cell zero"></span><span class="heat-cell" style="--intensity:.4"></span><span class="heat-cell" style="--intensity:.7"></span><span class="heat-cell" style="--intensity:1"></span> meer</div>
+      </div>
+    </div>
+  </section>
+
+  <section id="climbs-section" class="fade-in">
+    <h2>Geklommen routes &amp; boulders</h2>
+    <div class="filters">
+      <select id="f-type"><option value="">Alle types</option><option value="route">Routes</option><option value="boulder">Boulders</option></select>
+      <select id="f-grade"><option value="">Alle grades</option></select>
+      <select id="f-gym"><option value="">Alle gyms</option></select>
+      <select id="f-style"><option value="">Alle stijlen</option></select>
+      <select id="f-hold"><option value="">Alle holds</option></select>
+      <input type="text" id="f-search" placeholder="Zoek op naam…">
+      <input type="date" id="f-from" title="Vanaf datum">
+      <input type="date" id="f-to" title="Tot datum">
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th data-key="climbed_at">Datum</th>
+            <th data-key="type">Type</th>
+            <th data-key="name">Naam</th>
+            <th data-key="grade_sort">Grade</th>
+            <th data-key="wall">Wand</th>
+            <th data-key="tick_type">Tick</th>
+            <th data-key="tries">Pogingen</th>
+            <th>Stijl &amp; holds</th>
+          </tr>
+        </thead>
+        <tbody id="climbs-tbody"></tbody>
+      </table>
+      <div class="empty hidden" id="climbs-empty">Geen beklimmingen gevonden voor deze filters.</div>
+    </div>
+  </section>
+  </div>
+
+  <div class="panel hidden" id="panel-crew" role="tabpanel" data-tab="crew">
+  <section id="following-section" class="fade-in">
+    <h2 id="following-title">Mensen die ik volg</h2>
+    <div class="follow-grid" id="following-grid"></div>
+    <div class="empty hidden" id="following-empty">Je volgt nog niemand — of er is geen data opgehaald.</div>
+    <div class="followers-line" id="followers-line"></div>
+    <div class="kudos" id="kudos">
+      <h3 class="sub">Kudo-balans per volger</h3>
+      <div id="kudos-body"></div>
+    </div>
+  </section>
+  </div>
+
+</main>
+
+<footer id="app-footer" class="hidden">TopLogger Dashboard · alleen-lezen, lokale data</footer>
+
+<div id="lock-overlay" class="hidden">
+  <form class="box" id="lock-form" autocomplete="on">
+    <h2>TopLogger dashboard</h2>
+    <p>Deze pagina is beveiligd. Vul je wachtwoord in; je ziet dan je eigen dashboard. De data wordt pas in je browser ontsleuteld.</p>
+    <input type="text" name="username" value="toplogger-dashboard" autocomplete="username" hidden>
+    <input class="pw" type="password" id="lock-pw" autocomplete="current-password" placeholder="Wachtwoord" required>
+    <label class="remember"><input type="checkbox" id="lock-remember"> onthoud op dit apparaat</label>
+    <p class="err" id="lock-err" role="alert"></p>
+    <button type="submit">Openen</button>
+  </form>
+</div>
+
+<div id="picker-overlay">
+  <div class="box">
+    <h2>dashboard.json niet gevonden</h2>
+    <p>
+      Dit bestand lokaal openen blokkeert soms het automatisch inladen van
+      <code>data/dashboard.json</code> (browserbeveiliging voor
+      <code>file://</code>-pagina's). Kies het bestand hieronder handmatig,
+      of open dit dashboard via een statische webserver / <code>start.bat</code>.
+    </p>
+    <input type="file" id="file-picker" accept="application/json" hidden>
+    <button id="file-picker-btn">Kies dashboard.json</button>
+  </div>
+</div>
+
+<div id="update-banner" class="update-banner hidden" role="status">
+  Nieuwe versie beschikbaar
+  <button id="update-btn" type="button">Vernieuwen</button>
+</div>
+
+<script>
+(function () {
+  "use strict";
+
+  const TICK_LABELS = {onsight:"Onsight", flash:"Flash", redpoint:"Redpoint", repeat:"Herhaling", project:"Project"};
+  const GLOSSARY = [
+    {key:"onsight", term:"Onsight", desc:"In één keer geklommen, zonder info of eerdere pogingen vooraf."},
+    {key:"flash", term:"Flash", desc:"In één keer geklommen, wél met tips of beta vooraf gezien."},
+    {key:"redpoint", term:"Redpoint", desc:"Geklommen na één of meer eerdere mislukte pogingen."},
+    {key:"repeat", term:"Herhaling", desc:"Een route/boulder die je al eerder toppte, nog een keer gedaan."},
+    {key:"project", term:"Project", desc:"Nog niet gelukt — wel geprobeerd, nog niet volbracht."},
+  ];
+  const dateFmt = new Intl.DateTimeFormat("nl-NL", {day:"numeric", month:"short", year:"numeric"});
+  const dateTimeFmt = new Intl.DateTimeFormat("nl-NL", {day:"numeric", month:"short", year:"numeric", hour:"2-digit", minute:"2-digit"});
+  const shortDateTimeFmt = new Intl.DateTimeFormat("nl-NL", {day:"numeric", month:"short", hour:"2-digit", minute:"2-digit"});
+
+  let DATA = null;
+  let P = null; // het profiel (persoon) waarvan het dashboard nu getoond wordt
+  let activeType = "route";
+  let sortKey = "climbed_at";
+  let sortDir = "desc";
+  let weeklyChart = null;
+  let historyChart = null;
+
+  // ---------- thema ----------
+  const savedTheme = localStorage.getItem("tl-theme");
+  if (savedTheme) document.documentElement.setAttribute("data-theme", savedTheme);
+  // Statusbalk/adresbalk (theme-color) in dezelfde kleur als de header.
+  function syncThemeColor() {
+    const color = getComputedStyle(document.documentElement).getPropertyValue("--bg-alt").trim();
+    for (const meta of document.querySelectorAll('meta[name="theme-color"]')) meta.content = color;
+  }
+  syncThemeColor();
+  window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", syncThemeColor);
+  document.getElementById("theme-toggle").addEventListener("click", () => {
+    const dark = window.matchMedia("(prefers-color-scheme: dark)").matches;
+    const cur = document.documentElement.getAttribute("data-theme") || (dark ? "dark" : "light");
+    const next = cur === "dark" ? "light" : "dark";
+    document.documentElement.setAttribute("data-theme", next);
+    localStorage.setItem("tl-theme", next);
+    syncThemeColor();
+    renderCharts();
+    if (P) renderProgressHistory();
+  });
+
+  // ---------- helpers ----------
+  function fmtDate(iso) {
+    if (!iso) return "–";
+    const d = new Date(iso + (iso.length <= 10 ? "T00:00:00" : ""));
+    if (isNaN(d)) return iso;
+    return dateFmt.format(d);
+  }
+  function initials(name) {
+    if (!name) return "?";
+    return name.trim().split(/\s+/).slice(0, 2).map(p => p[0]).join("").toUpperCase();
+  }
+  function avatarEl(url, name, size) {
+    if (url) {
+      const img = document.createElement("img");
+      img.className = "avatar";
+      img.src = url; img.alt = name || "";
+      img.style.width = img.style.height = (size || 32) + "px";
+      img.onerror = () => { img.replaceWith(avatarFallback(name, size)); };
+      return img;
+    }
+    return avatarFallback(name, size);
+  }
+  function avatarFallback(name, size) {
+    const d = document.createElement("div");
+    d.className = "avatar-fallback";
+    d.style.width = d.style.height = (size || 32) + "px";
+    d.textContent = initials(name);
+    return d;
+  }
+  function escapeHtml(s) {
+    return String(s).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+  }
+
+  // ---------- data laden ----------
+  // dataFromCache: de laatst opgehaalde data kwam zonder verbinding uit de
+  // cache van de service worker (sw.js zet dan de header X-TL-Offline).
+  let dataFromCache = false;
+  async function fetchJson(url) {
+    try {
+      const res = await fetch(url, {cache: "no-store"});
+      if (!res.ok) return null;
+      dataFromCache = res.headers.has("X-TL-Offline");
+      return await res.json();
+    } catch (e) {
+      return null;
+    }
+  }
+  function updateOfflineBadge() {
+    document.getElementById("offline-badge").classList.toggle("hidden", !(dataFromCache || !navigator.onLine));
+  }
+  window.addEventListener("offline", updateOfflineBadge);
+  window.addEventListener("online", () => { updateOfflineBadge(); refreshIfNewer(); });
+
+  // Online (GitHub Pages) staat alleen een versleutelde versie: AES-256-GCM
+  // met een PBKDF2-SHA256-sleutel uit het wachtwoord (zie publish.py).
+  const PW_KEY = "tl-dashboard-pw";
+  let sitePassword = null;
+  try { sitePassword = localStorage.getItem(PW_KEY); } catch (e) {}
+
+  async function decryptDashboard(enc, password) {
+    const b64 = s => Uint8Array.from(atob(s), c => c.charCodeAt(0));
+    const base = await crypto.subtle.importKey("raw", new TextEncoder().encode(password), "PBKDF2", false, ["deriveKey"]);
+    const key = await crypto.subtle.deriveKey(
+      {name: "PBKDF2", hash: "SHA-256", salt: b64(enc.salt), iterations: enc.iter},
+      base, {name: "AES-GCM", length: 256}, false, ["decrypt"]);
+    const plain = await crypto.subtle.decrypt({name: "AES-GCM", iv: b64(enc.iv)}, key, b64(enc.ct));
+    return JSON.parse(new TextDecoder().decode(plain));
+  }
+
+  // Iedereen die ik volg heeft een eigen bestand data/u/<naam>.enc.json met
+  // alleen diens eigen dashboard; <naam> volgt uit het wachtwoord (zelfde
+  // PBKDF2 als publish.py), dus een wachtwoord is genoeg om in te loggen.
+  async function userFileName(password) {
+    const base = await crypto.subtle.importKey("raw", new TextEncoder().encode(password), "PBKDF2", false, ["deriveBits"]);
+    const bits = await crypto.subtle.deriveBits(
+      {name: "PBKDF2", hash: "SHA-256", salt: new TextEncoder().encode("toplogger-dashboard/bestand"), iterations: 600000},
+      base, 128);
+    return [...new Uint8Array(bits)].map(b => b.toString(16).padStart(2, "0")).join("");
+  }
+
+  // Eerst het volledige dashboard (mijn wachtwoord), anders het persoonlijke
+  // bestand dat bij dit wachtwoord hoort. Gooit een fout bij een onbekend wachtwoord.
+  async function unlock(password) {
+    if (encryptedData) {
+      try { return await decryptDashboard(encryptedData, password); } catch (e) {}
+    }
+    const own = await fetchJson(`data/u/${await userFileName(password)}.enc.json`);
+    if (!own) throw new Error("onbekend wachtwoord");
+    return await decryptDashboard(own, password);
+  }
+
+  let encryptedData = null;
+  async function tryFetch() {
+    const plain = await fetchJson("data/dashboard.json");
+    if (plain) return plain;
+    encryptedData = await fetchJson("data/dashboard.enc.json");
+    if (!encryptedData) return null;
+    document.getElementById("picker-overlay").classList.add("hidden");
+    if (sitePassword) {
+      try { return await unlock(sitePassword); } catch (e) { sitePassword = null; }
+    }
+    document.getElementById("lock-overlay").classList.remove("hidden");
+    document.getElementById("lock-pw").focus();
+    return null;
+  }
+
+  document.getElementById("lock-form").addEventListener("submit", async e => {
+    e.preventDefault();
+    const pw = document.getElementById("lock-pw").value;
+    const err = document.getElementById("lock-err");
+    err.textContent = "Bezig met ontsleutelen…";
+    try {
+      const data = await unlock(pw);
+      sitePassword = pw;
+      try {
+        if (document.getElementById("lock-remember").checked) localStorage.setItem(PW_KEY, pw);
+        else localStorage.removeItem(PW_KEY);
+      } catch (e) {}
+      err.textContent = "";
+      document.getElementById("lock-overlay").classList.add("hidden");
+      boot(data);
+    } catch (e) {
+      err.textContent = "Onjuist wachtwoord.";
+    }
+  });
+
+  function boot(data) {
+    DATA = normalize(data);
+    document.getElementById("picker-overlay").classList.add("hidden");
+    document.getElementById("app").classList.remove("hidden");
+    document.getElementById("app-footer").classList.remove("hidden");
+    updateOfflineBadge();
+    render();
+  }
+
+  function normalizeProfile(p) {
+    p.progress = p.progress || {};
+    p.progress.route = p.progress.route || {grade_distribution: [], weekly_totals: [], top_ascends: []};
+    p.progress.boulder = p.progress.boulder || {grade_distribution: [], weekly_totals: [], top_ascends: []};
+    p.climbs = p.climbs || [];
+    p.sessions = p.sessions || [];
+    p.progress_history = p.progress_history || [];
+    p.following = p.following || [];
+    p.followers = p.followers || [];
+    p.kudos = p.kudos || [];
+    return p;
+  }
+
+  function normalize(d) {
+    d = d || {};
+    d.me = d.me || {};
+    if (!Array.isArray(d.profiles) || !d.profiles.length) {
+      // Oud formaat (vóór profielen): alleen mijn eigen data op het hoogste niveau.
+      d.profiles = [Object.assign({}, d.me, {
+        is_me: true, progress: d.progress, progress_history: d.progress_history, sessions: d.sessions, climbs: d.climbs,
+        following: d.following, followers: d.followers, kudos: d.kudos,
+      })];
+    }
+    d.profiles = d.profiles.map(normalizeProfile);
+    d.following = d.following || [];
+    d.followers = d.followers || [];
+    d.kudos = d.kudos || [];
+    d.map = d.map || null;
+    return d;
+  }
+
+  // ---------- profielschakelaar ----------
+  const PROFILE_KEY = "tl-profile";
+  function storedProfileId() {
+    try { return localStorage.getItem(PROFILE_KEY); } catch (e) { return null; }
+  }
+  function selectProfile(id) {
+    P = DATA.profiles.find(p => p.id === id) || DATA.profiles[0];
+    try { localStorage.setItem(PROFILE_KEY, P.id); } catch (e) {}
+  }
+  function firstName(p) {
+    return ((p && p.name) || "").split(/\s+/)[0] || "deze persoon";
+  }
+  function renderProfileSwitch() {
+    const nav = document.getElementById("profile-switch");
+    nav.innerHTML = "";
+    nav.classList.toggle("hidden", DATA.profiles.length < 2);
+    for (const p of DATA.profiles) {
+      const btn = document.createElement("button");
+      btn.className = p === P ? "active" : "";
+      btn.dataset.id = p.id;
+      btn.setAttribute("aria-pressed", p === P ? "true" : "false");
+      btn.appendChild(avatarEl(p.avatar_url, p.name, 26));
+      btn.appendChild(document.createTextNode(p.is_me ? "Ik" : firstName(p)));
+      btn.title = p.name || "";
+      nav.appendChild(btn);
+    }
+  }
+  function switchProfile(id) {
+    if (P && P.id === id) return;
+    selectProfile(id);
+    renderProfile();
+    document.getElementById("profile-switch").scrollIntoView({block: "nearest", behavior: "smooth"});
+  }
+  document.getElementById("profile-switch").addEventListener("click", e => {
+    const btn = e.target.closest("button[data-id]");
+    if (btn) switchProfile(btn.dataset.id);
+  });
+  // Tekst voor mijn eigen dashboard of dat van iemand die ik volg ({naam} = voornaam).
+  function who(you, other) { return P.is_me ? you : other.replace("{naam}", firstName(P)); }
+
+  // ---------- hero ----------
+  function renderHero() {
+    const genEl = document.getElementById("generated-at");
+    const generated = DATA.generated_at ? new Date(DATA.generated_at) : null;
+    // Op de telefoon zonder jaartal, zodat het naast de knoppen past.
+    const narrow = window.matchMedia("(max-width:520px)").matches;
+    genEl.textContent = generated ? (narrow ? shortDateTimeFmt : dateTimeFmt).format(generated) : "";
+    genEl.title = generated ? "Data van " + dateTimeFmt.format(generated) : "";
+
+    const me = P;
+    const gym = DATA.me.gym;
+    const hero = document.getElementById("hero");
+    hero.innerHTML = "";
+    if (!me.id) return;
+
+    const idBlock = document.createElement("div");
+    idBlock.className = "hero-id";
+    idBlock.appendChild(avatarEl(me.avatar_url, me.name, 52));
+    const meta = document.createElement("div");
+    meta.innerHTML = `<div class="hero-name">${escapeHtml(me.name || "")}</div><div class="hero-gym">${escapeHtml((gym && gym.name) || "")}</div>`;
+    idBlock.appendChild(meta);
+    hero.appendChild(idBlock);
+
+    const stats = document.createElement("div");
+    stats.className = "hero-stats";
+    const totalClimbs = P.climbs.length;
+    const streak = me.streak_weeks;
+    stats.innerHTML = `
+      <div class="hero-stat"><div class="n">${totalClimbs}</div><div class="l">Beklimmingen totaal</div></div>
+      <div class="hero-stat"><div class="n">${streak ? streak : "–"}${streak ? '<span class="unit">wk</span>' : ""} <span class="flame">${streak ? "🔥" : ""}</span></div><div class="l">Huidige streak</div></div>
+      <div class="hero-stat"><div class="n">${me.followings_count ?? "–"}</div><div class="l">${who("Volg jij", "Volgt")}</div></div>
+      <div class="hero-stat"><div class="n">${me.followers_count ?? "–"}</div><div class="l">${who("Volgen jou", "Volgers")}</div></div>
+    `;
+    hero.appendChild(stats);
+  }
+
+  // ---------- laatste sessie ----------
+  const weekdayDateFmt = new Intl.DateTimeFormat("nl-NL", {weekday:"long", day:"numeric", month:"long", year:"numeric"});
+  const timeFmt = new Intl.DateTimeFormat("nl-NL", {hour:"2-digit", minute:"2-digit"});
+  const localIsoDate = d => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+
+  function renderLastSession() {
+    const section = document.getElementById("last-session-section");
+    const s = P.last_session;
+    section.classList.toggle("hidden", !s || !s.date);
+    document.getElementById("last-session-empty").classList.toggle("hidden", !!(s && s.date));
+    if (!s || !s.date) return;
+
+    // Tijdstip = laatste wijziging van het vinkje; alleen tonen als dat op de sessiedag zelf was.
+    const climbs = (s.climbs || []).map(c => {
+      const t = c.logged_at ? new Date(c.logged_at) : null;
+      return Object.assign({}, c, {time: t && !isNaN(t) && localIsoDate(t) === s.date ? t : null});
+    }).sort((a, b) => (!a.time - !b.time) || (a.time - b.time)); // zonder tijd achteraan
+    const times = climbs.map(c => c.time).filter(Boolean).sort((a, b) => a - b);
+    const span = times.length
+      ? (times.length > 1 && timeFmt.format(times[0]) !== timeFmt.format(times[times.length - 1])
+          ? `${timeFmt.format(times[0])} – ${timeFmt.format(times[times.length - 1])}`
+          : timeFmt.format(times[0]))
+      : null;
+    const date = new Date(s.date + "T00:00:00");
+    document.getElementById("last-session-when").innerHTML =
+      `<strong>${escapeHtml(weekdayDateFmt.format(date).replace(/^./, ch => ch.toUpperCase()))}</strong>`
+      + (span ? ` · <span class="mono">${span}</span>` : "")
+      + (s.gym_name ? ` · ${escapeHtml(s.gym_name)}` : "");
+
+    const topped = climbs.filter(c => c.ticked).length;
+    const maxGrade = [s.routes_grade_max, s.boulders_grade_max].filter(Boolean).join(" / ");
+    // Vergelijking met het gemiddelde van alle andere sessies.
+    const others = P.sessions.filter(r => r.date !== s.date);
+    const avg = f => others.length ? others.reduce((sum, r) => sum + (f(r) || 0), 0) / others.length : null;
+    const delta = (value, average, unit, digits = 1) => {
+      const fmt1 = n => n.toLocaleString("nl-NL", {maximumFractionDigits: digits});
+      if (average == null || !value) return "";
+      const diff = value - average;
+      const same = Math.abs(diff) < 0.5;
+      const cls = same ? "" : diff > 0 ? "up" : "down";
+      const change = same ? "≈" : (diff > 0 ? "+" : "−") + fmt1(Math.abs(diff)) + unit;
+      return `<div class="delta ${cls}" title="gemiddelde van ${others.length} andere sessies">gem. ${fmt1(average)}${unit} · ${change}</div>`;
+    };
+    const count = climbs.length || (s.routes_tries + s.boulders_tries);
+    const cards = [
+      ["Geklommen", count, delta(count, avg(r => r.routes_tries + r.boulders_tries), "")],
+      ["Getopt", climbs.length ? `${topped} / ${climbs.length}` : "–", ""],
+      ["Hoogste grade", maxGrade || "–", ""],
+      ["Hoogtemeters", s.total_height_m ? Math.round(s.total_height_m) + " m" : "–", delta(s.total_height_m, avg(r => r.total_height_m), " m", 0)],
+    ];
+    document.getElementById("last-session-stats").innerHTML = cards.map(([label, value, extra]) =>
+      `<div class="stat-card"><div class="value">${escapeHtml(value)}</div><div class="label">${label}</div>${extra}</div>`).join("");
+    document.getElementById("last-session-records").innerHTML = (s.records || []).map(r =>
+      `<span class="record"${r.since ? ` title="sinds ${escapeHtml(fmtDate(r.since))}, zo ver gaat de sessiedata terug"` : ""}>${escapeHtml(r.text)}</span>`).join("");
+
+    const ul = document.getElementById("last-session-list");
+    ul.innerHTML = climbs.length ? "" : '<div class="empty">Geen losse beklimmingen bekend voor deze sessie.</div>';
+    for (const c of climbs) {
+      const holdStyle = c.hold_color_secondary
+        ? `background:linear-gradient(135deg, ${escapeHtml(c.hold_color)} 50%, ${escapeHtml(c.hold_color_secondary)} 50%)`
+        : `background:${escapeHtml(c.hold_color || "transparent")}`;
+      const tag = c.ticked
+        ? `<span class="tag ${c.tick_type}">${TICK_LABELS[c.tick_type] || "Top"}</span>`
+        : `<span class="tag tried">Niet getopt</span>`;
+      const meta = [c.wall, c.type === "boulder" ? "boulder" : null,
+        c.earlier_tries && c.tick_type !== "repeat" ? `${c.earlier_tries}× eerder geprobeerd` : null].filter(Boolean).join(" · ");
+      const li = document.createElement("li");
+      if (!c.ticked) li.className = "untopped";
+      li.innerHTML = `
+        <span class="stime">${c.time ? timeFmt.format(c.time) : "–"}</span>
+        <span class="hold" style="${holdStyle}"></span>
+        <span class="sgrade">${escapeHtml(c.grade || "?")}</span>
+        <span><span class="rname">${escapeHtml(c.name || "")}</span><span class="rmeta">${escapeHtml(meta)}</span></span>
+        <span class="rright">${tag}</span>
+      `;
+      ul.appendChild(li);
+    }
+    document.getElementById("last-session-note").textContent = times.length
+      ? `Tijden zijn bij benadering: TopLogger bewaart alleen wanneer ${who("je", "{naam}")} een route het laatst ${who("hebt", "heeft")} gelogd of aangepast.`
+      : "";
+  }
+
+  // ---------- volgende keer ----------
+  let nextUpType = "route";
+  const monthYearFmt = new Intl.DateTimeFormat("nl-NL", {month:"short", year:"numeric"});
+
+  function daysUntil(iso) {
+    const today = new Date(); today.setHours(0, 0, 0, 0);
+    return Math.round((new Date(iso + "T00:00:00") - today) / 86400000);
+  }
+  function outLabel(iso) {
+    if (!iso) return "";
+    const days = daysUntil(iso);
+    if (days < 0) return '<span class="soon">gepland weg</span>';
+    if (days <= 42) return `<span class="soon">nog ${days < 14 ? days + " dagen" : Math.round(days / 7) + " weken"}</span>`;
+    return `tot ${escapeHtml(monthYearFmt.format(new Date(iso + "T00:00:00")))}`;
+  }
+
+  function nextUpItem(c, right) {
+    const holdStyle = c.hold_color_secondary
+      ? `background:linear-gradient(135deg, ${escapeHtml(c.hold_color)} 50%, ${escapeHtml(c.hold_color_secondary)} 50%)`
+      : `background:${escapeHtml(c.hold_color || "transparent")}`;
+    const meta = [c.wall, c.wall_section ? "sectie " + c.wall_section : null,
+      c.tries ? `${c.tries}× geprobeerd` : null].filter(Boolean).join(" · ");
+    const li = document.createElement("li");
+    li.tabIndex = 0;
+    li.title = "Toon op de wandkaart";
+    li.innerHTML = `
+      <span class="hold" style="${holdStyle}"></span>
+      <span class="sgrade">${escapeHtml(c.grade || "?")}</span>
+      <span><span class="rname">${escapeHtml(c.name || "Naamloos")}</span><span class="rmeta">${escapeHtml(meta)}</span></span>
+      <span class="rright">${right}</span>`;
+    const go = () => showOnMap(c);
+    li.addEventListener("click", go);
+    li.addEventListener("keydown", e => { if (e.key === "Enter") go(); });
+    return li;
+  }
+
+  function fillNextList(id, items, right, emptyText) {
+    const ul = document.getElementById(id);
+    ul.innerHTML = items.length ? "" : `<div class="empty">${emptyText}</div>`;
+    for (const c of items) ul.appendChild(nextUpItem(c, right(c)));
+  }
+
+  function renderNextUp() {
+    const n = P.next_up;
+    const types = n ? ["route", "boulder"].filter(t => n[t]) : [];
+    document.getElementById("next-up-section").classList.toggle("hidden", !types.length);
+    if (!types.length) return;
+    if (!types.includes(nextUpType)) nextUpType = types[0];
+    document.getElementById("next-up-tabs").innerHTML = types.length < 2 ? "" : types.map(t =>
+      `<button data-type="${t}" class="${t === nextUpType ? "active" : ""}">${t === "boulder" ? "Boulders" : "Routes"}</button>`).join("");
+    const x = n[nextUpType];
+    document.getElementById("next-up-level").innerHTML =
+      `${who("Jouw niveau", "Niveau van {naam}")}: <strong>${escapeHtml(x.level)}</strong> · suggesties tot en met ${escapeHtml(x.next_grade)}`;
+    document.getElementById("next-up-new-title").textContent = `Nieuw sinds ${fmtDate(n.last_session_date)}`;
+    fillNextList("next-up-projects", x.projects, c => outLabel(c.out_planned_at), "Geen lopende projecten.");
+    fillNextList("next-up-suggestions", x.suggestions, c => c.stars ? `★ ${c.stars.toLocaleString("nl-NL")}` : "", "Niets ongeprobeerds op dit niveau.");
+    fillNextList("next-up-new", x.new, c => escapeHtml(fmtDate(c.in_at)), "Nog niets nieuws op dit niveau.");
+  }
+  document.getElementById("next-up-tabs").addEventListener("click", e => {
+    const btn = e.target.closest("button[data-type]");
+    if (!btn) return;
+    nextUpType = btn.dataset.type;
+    renderNextUp();
+  });
+
+  // Zoomt de wandkaart in op de wand van route `c` en laat zijn stip knipperen.
+  function showOnMap(c) {
+    const map = DATA.map;
+    if (!map) return;
+    const base = map.climbs.find(m => m.id === c.id);
+    showTab("hal", {scroll: false});
+    mapActiveType = c.type;
+    mapHighlightId = c.id;
+    mapZoomedWallId = null;
+    renderMap();
+    const wall = base && map.walls.find(w => w.id === base.wall_id);
+    if (wall) zoomToWall(wall);
+    document.getElementById("map-wrap").scrollIntoView({behavior: "smooth", block: "center"});
+  }
+
+  // ---------- tabbladen ----------
+  function syncHeaderHeight() {
+    document.documentElement.style.setProperty("--header-h", document.querySelector("header").offsetHeight + "px");
+  }
+  window.addEventListener("resize", syncHeaderHeight);
+  syncHeaderHeight();
+  const TABS = ["sessie", "voortgang", "hal", "logboek", "crew"];
+  const TAB_KEY = "tl-tab";
+  function storedTab() {
+    const fromHash = location.hash.slice(1);
+    if (TABS.includes(fromHash)) return fromHash;
+    try { const t = localStorage.getItem(TAB_KEY); return TABS.includes(t) ? t : "sessie"; } catch (e) { return "sessie"; }
+  }
+  let activeTab = storedTab();
+  function showTab(tab, {scroll = true} = {}) {
+    activeTab = TABS.includes(tab) ? tab : "sessie";
+    for (const el of document.querySelectorAll(".panel")) el.classList.toggle("hidden", el.dataset.tab !== activeTab);
+    for (const b of document.querySelectorAll("#tabbar button")) {
+      const on = b.dataset.tab === activeTab;
+      b.classList.toggle("active", on);
+      b.setAttribute("aria-selected", on ? "true" : "false");
+    }
+    try { localStorage.setItem(TAB_KEY, activeTab); } catch (e) {}
+    if (location.hash.slice(1) !== activeTab) history.replaceState(null, "", "#" + activeTab);
+    // Grafieken die verborgen werden getekend, krijgen nu hun echte maat.
+    if (weeklyChart) weeklyChart.resize();
+    if (historyChart) historyChart.resize();
+    if (scroll) {
+      // Naar het begin van de tab, onder de vaste balken (de tabbalk plakt bovenaan op desktop, staat onderaan op de telefoon).
+      const bar = document.getElementById("tabbar");
+      const barAbove = getComputedStyle(bar).position === "sticky" ? bar.offsetHeight : 0;
+      const panel = document.getElementById("panel-" + activeTab);
+      const top = panel.getBoundingClientRect().top + window.scrollY - document.querySelector("header").offsetHeight - barAbove - 12;
+      if (window.scrollY > top) window.scrollTo({top, behavior: "auto"});
+    }
+  }
+  document.getElementById("tabbar").addEventListener("click", e => {
+    const btn = e.target.closest("button[data-tab]");
+    if (btn) showTab(btn.dataset.tab);
+  });
+  window.addEventListener("hashchange", () => { if (TABS.includes(location.hash.slice(1))) showTab(location.hash.slice(1)); });
+
+  // ---------- uitdagingen & records ----------
+  function renderChallenges() {
+    const challenges = P.challenges || [];
+    const records = (P.records && P.records.items) || [];
+    document.getElementById("challenges-section").classList.toggle("hidden", !challenges.length && !records.length);
+
+    const ul = document.getElementById("challenge-list");
+    ul.innerHTML = challenges.length ? "" : '<div class="empty">Nog geen uitdagingen.</div>';
+    const nl = n => n.toLocaleString("nl-NL");
+    for (const c of challenges) {
+      const pct = c.target ? Math.min(100, Math.round(c.current / c.target * 100)) : 0;
+      const li = document.createElement("li");
+      if (pct >= 75) li.className = "close"; // bijna gehaald
+      li.innerHTML = `
+        <div class="ctop"><span class="ctitle">${escapeHtml(c.title)}</span>
+          <span class="cnum">${nl(c.current)} / ${nl(c.target)}${c.unit ? " " + escapeHtml(c.unit) : ""}</span></div>
+        ${c.detail ? `<div class="cdetail">${escapeHtml(c.detail)}</div>` : ""}
+        <div class="bar" role="progressbar" aria-valuenow="${pct}" aria-valuemin="0" aria-valuemax="100"><span style="width:${pct}%"></span></div>`;
+      ul.appendChild(li);
+    }
+
+    const rl = document.getElementById("record-list");
+    rl.innerHTML = records.length ? "" : '<div class="empty">Nog geen records.</div>';
+    for (const r of records) {
+      const when = !r.date ? "" : r.period === "month"
+        ? monthYearFmt.format(new Date(r.date + "T00:00:00"))
+        : r.period === "week" ? "week van " + fmtDate(r.date) : fmtDate(r.date);
+      const li = document.createElement("li");
+      li.innerHTML = `
+        <span><span class="rname">${escapeHtml(r.label)}${r.new ? '<span class="tag new-record">nieuw</span>' : ""}</span>
+          <span class="rmeta">${escapeHtml(when)}</span></span>
+        <span class="rval">${escapeHtml(r.value || "–")}</span>`;
+      rl.appendChild(li);
+    }
+    document.getElementById("record-note").textContent = P.records && P.records.since
+      ? `Records in deze hal, sinds ${fmtDate(P.records.since)} (zo ver gaat de sessiedata terug). Dagscore = TopLogger's grade voor de hele sessie.`
+      : "";
+  }
+
+  // ---------- activiteit ----------
+  function renderActivityStats() {
+    const wrap = document.getElementById("activity-stats");
+    const sessions = P.sessions;
+    const totalHeight = sessions.reduce((s, r) => s + (r.total_height_m || 0), 0);
+    const perWeek = daysPerWeek(sessions);
+    const cards = [
+      ["Klimdagen", sessions.length],
+      ["Gem. dagen per week", perWeek.overall ?? "–", who("sinds je eerste sessie", "sinds de eerste sessie")],
+      ["Dagen per week, laatste 4 wk", perWeek.recent ?? "–", "afgelopen 28 dagen"],
+      ["Hoogtemeters", totalHeight ? Math.round(totalHeight) + " m" : "–"],
+    ];
+    wrap.innerHTML = cards.map(([label, value, hint]) => `
+      <div class="stat-card"${hint ? ` title="${escapeHtml(hint)}"` : ""}><div class="value">${escapeHtml(value)}</div><div class="label">${label}</div></div>
+    `).join("");
+  }
+
+  // Gemiddeld aantal verschillende klimdagen per week: over de hele periode
+  // sinds de eerste sessie (t/m vandaag) en over de laatste 28 dagen.
+  function daysPerWeek(sessions) {
+    const dates = [...new Set(sessions.map(s => s.date).filter(Boolean))].sort();
+    if (!dates.length) return {overall: null, recent: null};
+    const DAY = 86400000;
+    const today = new Date(); today.setHours(0, 0, 0, 0);
+    const first = new Date(dates[0] + "T00:00:00");
+    const weeks = Math.max(1, (today - first) / DAY / 7);
+    const cutoff = new Date(today - 27 * DAY).toISOString().slice(0, 10);
+    const recentDays = dates.filter(d => d >= cutoff).length;
+    const fmt = n => n.toLocaleString("nl-NL", {maximumFractionDigits: 1});
+    return {overall: fmt(dates.length / weeks), recent: fmt(recentDays / 4)};
+  }
+
+  function buildHeatmapCells(sessions, weeksBack) {
+    const byDate = {};
+    for (const s of sessions) byDate[s.date] = (s.routes_tries || 0) + (s.boulders_tries || 0);
+    const today = new Date(); today.setHours(0, 0, 0, 0);
+    const start = new Date(today);
+    start.setDate(start.getDate() - (weeksBack * 7 - 1));
+    start.setDate(start.getDate() - ((start.getDay() + 6) % 7)); // terug naar maandag
+    const cells = [];
+    for (let d = new Date(start); d <= today; d.setDate(d.getDate() + 1)) {
+      const iso = d.toISOString().slice(0, 10);
+      cells.push({date: iso, value: byDate[iso] || 0});
+    }
+    return cells;
+  }
+
+  function renderHeatmap() {
+    const wrap = document.getElementById("heatmap");
+    wrap.innerHTML = "";
+    const sessions = P.sessions;
+    if (!sessions.length) { wrap.innerHTML = '<div class="empty">Nog geen sessiedata.</div>'; return; }
+    const cells = buildHeatmapCells(sessions, 18);
+    const max = Math.max(...cells.map(c => c.value), 1);
+    for (const c of cells) {
+      const div = document.createElement("div");
+      div.className = "heat-cell" + (c.value ? "" : " zero");
+      if (c.value) div.style.setProperty("--intensity", (0.3 + 0.7 * (c.value / max)).toFixed(2));
+      div.title = `${fmtDate(c.date)}: ${c.value ? c.value + " pogingen" : "geen activiteit"}`;
+      wrap.appendChild(div);
+    }
+  }
+
+  function renderProgressHistory() {
+    const rows = P.progress_history;
+    const cs = getComputedStyle(document.documentElement);
+    const gridColor = cs.getPropertyValue("--border-soft").trim();
+    const textColor = cs.getPropertyValue("--text-faint").trim();
+    const ctx = document.getElementById("history-chart");
+
+    if (historyChart) historyChart.destroy();
+    ctx.parentElement.querySelector(".empty")?.remove();
+    if (!rows.length) { injectEmpty(ctx, "Nog geen langetermijndata."); return; }
+
+    historyChart = new Chart(ctx, {
+      type: "line",
+      data: {
+        labels: rows.map(r => fmtDate(r.date)),
+        datasets: [
+          {
+            label: "Routes", data: rows.map(r => r.routes_grade ? gradeSortValue(r.routes_grade) : null),
+            borderColor: cs.getPropertyValue("--accent-2").trim(), backgroundColor: "transparent",
+            spanGaps: true, tension: 0.3, pointRadius: 3,
+          },
+          {
+            label: "Boulders", data: rows.map(r => r.boulders_grade ? gradeSortValue(r.boulders_grade) : null),
+            borderColor: cs.getPropertyValue("--accent").trim(), backgroundColor: "transparent",
+            spanGaps: true, tension: 0.3, pointRadius: 3,
+          },
+        ],
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        scales: {
+          x: {grid: {display: false}, ticks: {color: textColor}},
+          y: {grid: {color: gridColor}, ticks: {display: false}},
+        },
+        plugins: {
+          legend: {labels: {color: textColor, boxWidth: 12}},
+          tooltip: {callbacks: {label: item => {
+            const key = item.datasetIndex === 0 ? "routes_grade" : "boulders_grade";
+            const g = rows[item.dataIndex][key];
+            return `${item.dataset.label}: ${g || "–"}`;
+          }}},
+        },
+      },
+    });
+  }
+
+  // ---------- voortgang ----------
+  function highestGrade(dist) {
+    if (!dist || !dist.length) return "–";
+    return dist[dist.length - 1].grade || "–";
+  }
+  function totalTicks(dist) {
+    return (dist || []).reduce((sum, r) => sum + (r.count || 0), 0);
+  }
+  function avgTries(climbs, type) {
+    const sent = climbs.filter(c => c.type === type && c.ticked && typeof c.tries === "number");
+    if (!sent.length) return null;
+    return sent.reduce((s, c) => s + c.tries, 0) / sent.length;
+  }
+  function favoriteWall(climbs, type) {
+    const counts = {};
+    for (const c of climbs) if (c.type === type && c.wall) counts[c.wall] = (counts[c.wall] || 0) + 1;
+    let best = null, bestN = 0;
+    for (const [w, n] of Object.entries(counts)) if (n > bestN) { best = w; bestN = n; }
+    return best;
+  }
+
+  function renderProgress() {
+    const p = P.progress[activeType] || {};
+    const dist = p.grade_distribution || [];
+    const weekly = p.weekly_totals || [];
+
+    const stats = document.getElementById("progress-stats");
+    stats.innerHTML = "";
+    const avg = avgTries(P.climbs, activeType);
+    const wall = favoriteWall(P.climbs, activeType);
+    const cards = [
+      ["Huidige grade", p.current_grade || "–"],
+      ["Hoogste grade", highestGrade(dist)],
+      ["Totaal getopt", totalTicks(dist)],
+      ["Projecten", P.climbs.filter(c => c.type === activeType && c.ticked === false).length],
+      ["Gem. pogingen/send", avg ? avg.toFixed(1) : "–"],
+      ["Favoriete wand", wall || "–"],
+    ];
+    for (const [label, value] of cards) {
+      const el = document.createElement("div");
+      el.className = "stat-card";
+      el.innerHTML = `<div class="value">${escapeHtml(value)}</div><div class="label">${label}</div>`;
+      stats.appendChild(el);
+    }
+
+    renderLadder(dist, p.current_grade);
+    renderTickBar(dist);
+    renderCharts();
+    renderTopAscends(p.top_ascends || []);
+  }
+
+  function renderLadder(dist, currentGrade) {
+    const wrap = document.getElementById("grade-ladder");
+    wrap.innerHTML = "";
+    if (!dist.length) { wrap.innerHTML = '<div class="ladder-empty">Nog geen grades geklommen.</div>'; return; }
+    const maxCount = Math.max(...dist.map(r => r.count || 0), 1);
+    for (const row of dist) {
+      const chip = document.createElement("div");
+      chip.className = "ladder-chip" + (row.grade === currentGrade ? " current" : "");
+      chip.style.setProperty("--intensity", (0.28 + 0.62 * ((row.count || 0) / maxCount)).toFixed(2));
+      chip.innerHTML = `<span class="g">${escapeHtml(row.grade || "?")}</span><span class="c">${row.count}×</span>`;
+      wrap.appendChild(chip);
+    }
+  }
+
+  function renderTickBar(dist) {
+    const totals = dist.reduce((acc, r) => {
+      acc.onsight += r.onsight || 0;
+      acc.flash += r.flash || 0;
+      acc.redpoint += r.redpoint || 0;
+      return acc;
+    }, {onsight: 0, flash: 0, redpoint: 0});
+    const sum = totals.onsight + totals.flash + totals.redpoint;
+    const cs = getComputedStyle(document.documentElement);
+    const bar = document.getElementById("tick-bar");
+    const legend = document.getElementById("tick-legend");
+    bar.innerHTML = "";
+    legend.innerHTML = "";
+    const order = [["onsight", "Onsight", "--onsight"], ["flash", "Flash", "--flash"], ["redpoint", "Redpoint", "--redpoint"]];
+    if (!sum) {
+      bar.innerHTML = "";
+      legend.innerHTML = '<span>Nog geen getopte beklimmingen in deze categorie.</span>';
+      return;
+    }
+    for (const [key, label, cssVar] of order) {
+      const n = totals[key];
+      if (n > 0) {
+        const seg = document.createElement("span");
+        seg.style.width = (n / sum * 100) + "%";
+        seg.style.background = cs.getPropertyValue(cssVar).trim();
+        bar.appendChild(seg);
+      }
+      const item = document.createElement("span");
+      item.innerHTML = `<span class="dot" style="background:${cs.getPropertyValue(cssVar).trim()}"></span>${label}: ${n}`;
+      legend.appendChild(item);
+    }
+  }
+
+  function renderCharts() {
+    if (!P) return;
+    const p = P.progress[activeType] || {};
+    const weekly = p.weekly_totals || [];
+    const cs = getComputedStyle(document.documentElement);
+    const gridColor = cs.getPropertyValue("--border-soft").trim();
+    const textColor = cs.getPropertyValue("--text-faint").trim();
+
+    if (weeklyChart) weeklyChart.destroy();
+    const weeklyCtx = document.getElementById("weekly-chart");
+    weeklyCtx.parentElement.querySelector(".empty")?.remove();
+    if (weekly.length) {
+      weeklyChart = new Chart(weeklyCtx, {
+        type: "bar",
+        data: {
+          labels: weekly.map(r => fmtDate(r.week_start)),
+          datasets: [{label: "Tops", data: weekly.map(r => r.climbs || 0), backgroundColor: cs.getPropertyValue("--accent-2").trim(), borderRadius: 3}],
+        },
+        options: {
+          responsive: true, maintainAspectRatio: false,
+          scales: {
+            x: {grid: {display:false}, ticks: {color: textColor, font:{family: cs.getPropertyValue("--font-display").trim()}}},
+            y: {beginAtZero: true, grid: {color: gridColor}, ticks: {color: textColor, precision: 0}},
+          },
+          plugins: {legend: {display:false}},
+        },
+      });
+    } else {
+      injectEmpty(weeklyCtx, "Nog geen wekelijkse data.");
+    }
+  }
+
+  function injectEmpty(canvas, msg) {
+    canvas.getContext("2d").clearRect(0, 0, canvas.width, canvas.height);
+    if (!canvas.parentElement.querySelector(".empty")) {
+      const d = document.createElement("div");
+      d.className = "empty";
+      d.textContent = msg;
+      canvas.parentElement.appendChild(d);
+    }
+  }
+
+  function renderTopAscends(list) {
+    const ul = document.getElementById("top-ascends-list");
+    ul.innerHTML = "";
+    if (!list.length) { ul.innerHTML = '<div class="empty">Nog geen beklimmingen met punten.</div>'; return; }
+    for (const a of list.slice(0, 6)) {
+      const li = document.createElement("li");
+      const communityBits = [];
+      if (a.community_grade && a.community_grade !== a.grade) communityBits.push(`community ${escapeHtml(a.community_grade)}`);
+      if (a.rating) communityBits.push(`★${a.rating}`);
+      li.innerHTML = `
+        <span class="swatch" style="background:${a.hold_color || "transparent"}"></span>
+        <span class="grade">${escapeHtml(a.grade || "?")}</span>
+        <span class="name">${escapeHtml(a.name || "")}${a.wall ? " · " + escapeHtml(a.wall) : ""}</span>
+        ${communityBits.length ? `<span class="community">${communityBits.join(" · ")}</span>` : ""}
+        ${a.tick_type ? `<span class="tag ${a.tick_type}">${TICK_LABELS[a.tick_type] || a.tick_type}</span>` : ""}
+      `;
+      ul.appendChild(li);
+    }
+  }
+
+  function renderGlossary() {
+    const dl = document.getElementById("glossary");
+    dl.innerHTML = GLOSSARY.map(g => `
+      <div>
+        <dt><span class="dot" style="--dot-color:var(--${g.key === "project" ? "repeat" : g.key})"></span>${g.term}</dt>
+        <dd>${g.desc}</dd>
+      </div>
+    `).join("");
+  }
+
+  document.getElementById("progress-tabs").addEventListener("click", e => {
+    const btn = e.target.closest("button[data-type]");
+    if (!btn) return;
+    activeType = btn.dataset.type;
+    document.querySelectorAll("#progress-tabs button").forEach(b => b.classList.toggle("active", b === btn));
+    renderProgress();
+  });
+
+  // ---------- wandkaart ----------
+  let mapActiveType = "route";
+  let mapZoomedWallId = null;
+  let mapHighlightId = null; // route die "Volgende keer" aanwijst
+  let mapFullViewBox = null;
+  // Grade-range per type ("" = geen grens); per kijker onthouden.
+  const MAP_GRADES_KEY = "tl-map-grades";
+  let mapGradeRange = {route: {min: "", max: ""}, boulder: {min: "", max: ""}};
+  try { Object.assign(mapGradeRange, JSON.parse(localStorage.getItem(MAP_GRADES_KEY)) || {}); } catch (e) {}
+
+  function saveMapGradeRange() {
+    try { localStorage.setItem(MAP_GRADES_KEY, JSON.stringify(mapGradeRange)); } catch (e) {}
+  }
+
+  function renderMapGradeRange() {
+    const grades = [...new Set(DATA.map.climbs.filter(c => c.active && c.type === mapActiveType && gradeSortValue(c.grade) >= 0).map(c => c.grade))]
+      .sort((a, b) => gradeSortValue(a) - gradeSortValue(b));
+    const range = mapGradeRange[mapActiveType] || (mapGradeRange[mapActiveType] = {min: "", max: ""});
+    // Een onthouden grade die nu niet (meer) hangt blijft gewoon als grens gelden.
+    const options = [...new Set([...grades, range.min, range.max].filter(Boolean))].sort((a, b) => gradeSortValue(a) - gradeSortValue(b));
+    for (const [id, key] of [["map-grade-min", "min"], ["map-grade-max", "max"]]) {
+      const sel = document.getElementById(id);
+      sel.length = 1;
+      for (const g of options) sel.insertAdjacentHTML("beforeend", `<option value="${escapeHtml(g)}">${escapeHtml(g)}</option>`);
+      sel.value = range[key];
+    }
+  }
+
+  function onMapGradeChange(key) {
+    const range = mapGradeRange[mapActiveType];
+    range[key] = document.getElementById("map-grade-" + key).value;
+    // Ondergrens boven bovengrens (of andersom)? Schuif de andere mee.
+    if (range.min && range.max && gradeSortValue(range.min) > gradeSortValue(range.max)) {
+      range[key === "min" ? "max" : "min"] = range[key];
+    }
+    saveMapGradeRange();
+    renderMap();
+  }
+
+  function mapBaseRadius() {
+    return Math.max(((DATA.map && DATA.map.bg_width) || 720) / 90, 4);
+  }
+
+  function resizeMapMarkers(svg, viewBoxWidth) {
+    const fullWidth = parseFloat((mapFullViewBox || "").split(" ")[2]) || viewBoxWidth;
+    const scale = Math.min(Math.max(fullWidth / viewBoxWidth, 2.2), 6);
+    const r = mapBaseRadius() * scale;
+    svg.querySelectorAll(".map-dot").forEach(d => d.setAttribute("r", r));
+    svg.querySelectorAll(".map-dot-grade").forEach(t => t.setAttribute("font-size", r * 1.25));
+  }
+
+  function applyWallZoom(svg, wall) {
+    const region = svg.querySelector("#map-region-" + wall.id_on_floorplan);
+    if (!region) return false;
+    const bbox = region.getBBox();
+    if (!bbox.width || !bbox.height) return false;
+    const padX = bbox.width * 0.18;
+    const padY = bbox.height * 0.18;
+    const viewW = bbox.width + padX * 2;
+    svg.setAttribute("viewBox", `${bbox.x - padX} ${bbox.y - padY} ${viewW} ${bbox.height + padY * 2}`);
+    svg.classList.add("zoomed");
+    resizeMapMarkers(svg, viewW);
+    return true;
+  }
+
+  function contrastTextColor(hex) {
+    const m = /^#([0-9a-f]{6})$/i.exec(hex || "");
+    if (!m) return "#111";
+    const n = parseInt(m[1], 16);
+    const r = (n >> 16) & 255, g = (n >> 8) & 255, b = n & 255;
+    const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+    return luminance > 0.6 ? "#111" : "#fff";
+  }
+
+  function zoomToWall(wall) {
+    const svg = document.querySelector("#map-canvas svg");
+    if (!svg || wall.id_on_floorplan == null) return;
+    if (mapZoomedWallId === wall.id) { resetMapZoom(); return; }
+    if (!applyWallZoom(svg, wall)) return;
+    mapZoomedWallId = wall.id;
+    document.getElementById("map-zoom-reset").classList.remove("hidden");
+    hideMapTooltip();
+  }
+
+  function resetMapZoom() {
+    const svg = document.querySelector("#map-canvas svg");
+    if (svg && mapFullViewBox) {
+      svg.setAttribute("viewBox", mapFullViewBox);
+      svg.classList.remove("zoomed");
+      svg.querySelectorAll(".map-dot").forEach(d => d.setAttribute("r", mapBaseRadius()));
+      svg.querySelectorAll(".map-dot-grade").forEach(t => t.setAttribute("font-size", mapBaseRadius() * 1.25));
+    }
+    mapZoomedWallId = null;
+    document.getElementById("map-zoom-reset").classList.add("hidden");
+  }
+
+  function renderMapTabs() {
+    const wrap = document.getElementById("map-tabs");
+    const types = [...new Set((DATA.map ? DATA.map.climbs : []).map(c => c.type))];
+    if (types.length && !types.includes(mapActiveType)) mapActiveType = types[0];
+    if (types.length < 2) { wrap.innerHTML = ""; return; }
+    wrap.innerHTML = types.map(t => `<button data-type="${t}" class="${t === mapActiveType ? "active" : ""}">${t === "boulder" ? "Boulders" : "Routes"}</button>`).join("");
+  }
+
+  function hideMapTooltip() {
+    document.getElementById("map-tooltip").classList.add("hidden");
+  }
+
+  function showMapTooltip(e, c) {
+    e.stopPropagation();
+    const tooltip = document.getElementById("map-tooltip");
+    const wrapRect = document.getElementById("map-wrap").getBoundingClientRect();
+    const statusTag = c.tick_type
+      ? `<span class="tag ${c.tick_type}">${TICK_LABELS[c.tick_type] || c.tick_type}</span>`
+      : c.ticked
+      ? ""
+      : '<span class="tag repeat">nog niet gedaan</span>';
+    tooltip.innerHTML = `
+      <div class="name">${escapeHtml(c.name || "Naamloos")}</div>
+      <div class="meta">${escapeHtml(c.grade || "?")} · ${escapeHtml(c.wall || "")}${c.wall_section ? " · sectie " + escapeHtml(c.wall_section) : ""}</div>
+      ${statusTag}
+    `;
+    tooltip.classList.remove("hidden");
+    const ttRect = tooltip.getBoundingClientRect();
+    let left = e.clientX - wrapRect.left + 12;
+    let top = e.clientY - wrapRect.top + 12;
+    if (left + ttRect.width > wrapRect.width - 4) left = e.clientX - wrapRect.left - ttRect.width - 12;
+    if (top + ttRect.height > wrapRect.height - 4) top = e.clientY - wrapRect.top - ttRect.height - 12;
+    tooltip.style.left = Math.max(4, left) + "px";
+    tooltip.style.top = Math.max(4, top) + "px";
+  }
+
+  function renderMap() {
+    const map = DATA.map;
+    document.getElementById("map-empty").classList.toggle("hidden", !!map);
+    document.getElementById("map-filters").classList.toggle("hidden", !map);
+    document.getElementById("map-legend").classList.toggle("hidden", !map);
+    document.getElementById("map-wrap").classList.toggle("hidden", !map);
+    if (!map) return;
+
+    renderMapTabs();
+    renderMapGradeRange();
+    hideMapTooltip();
+
+    const canvas = document.getElementById("map-canvas");
+    canvas.innerHTML = map.floorplan_svg;
+    const svg = canvas.querySelector("svg");
+    if (!svg) return;
+    const svgNS = "http://www.w3.org/2000/svg";
+    mapFullViewBox = svg.getAttribute("viewBox");
+
+    const wallsById = new Map(map.walls.map(w => [w.id, w]));
+    const wallsByFloorplanId = new Map(map.walls.filter(w => w.id_on_floorplan != null).map(w => [String(w.id_on_floorplan), w]));
+    svg.querySelectorAll(".map-region").forEach(region => {
+      const num = (region.id || "").replace("map-region-", "");
+      const wall = wallsByFloorplanId.get(num);
+      if (wall) region.addEventListener("click", () => zoomToWall(wall));
+    });
+
+    for (const wall of map.walls) {
+      if (wall.label_x == null || wall.label_y == null || !wall.name) continue;
+      const text = document.createElementNS(svgNS, "text");
+      text.setAttribute("x", wall.label_x * map.bg_width);
+      text.setAttribute("y", wall.label_y * map.bg_height);
+      text.setAttribute("font-size", map.bg_width / 34);
+      text.setAttribute("class", "map-wall-label");
+      text.textContent = wall.name;
+      text.addEventListener("click", () => zoomToWall(wall));
+      svg.appendChild(text);
+    }
+
+    document.getElementById("map-legend-who").textContent = who("door jou geklommen", "door {naam} geklommen");
+    const ticks = new Map(P.climbs.map(c => [c.id, c]));
+    const onlyTodo = document.getElementById("map-only-todo").checked;
+    const range = mapGradeRange[mapActiveType];
+    const minV = range.min ? gradeSortValue(range.min) : -Infinity;
+    const maxV = range.max ? gradeSortValue(range.max) : Infinity;
+    const r = mapBaseRadius();
+    let total = 0, shown = 0;
+    for (const base of map.climbs) {
+      if (!base.active || base.type !== mapActiveType) continue;
+      total++;
+      const own = ticks.get(base.id);
+      const c = Object.assign({}, base, {ticked: !!(own && own.ticked), tick_type: own ? own.tick_type : null});
+      // De route die "Toon op de wandkaart" aanwijst blijft altijd zichtbaar.
+      const pinned = c.id === mapHighlightId;
+      if (onlyTodo && c.ticked && !pinned) continue;
+      if ((range.min || range.max) && !pinned) {
+        const v = gradeSortValue(c.grade);
+        if (v < 0 || v < minV || v > maxV) continue;
+      }
+      shown++;
+      const cx = c.position_x * map.bg_width;
+      const cy = c.position_y * map.bg_height;
+      const dot = document.createElementNS(svgNS, "circle");
+      dot.setAttribute("cx", cx);
+      dot.setAttribute("cy", cy);
+      dot.setAttribute("r", r);
+      dot.setAttribute("fill", c.hold_color || "#999");
+      dot.setAttribute("class", "map-dot" + (c.ticked ? " ticked" : "") + (c.id === mapHighlightId ? " highlight" : ""));
+      dot.addEventListener("click", e => showMapTooltip(e, c));
+      svg.appendChild(dot);
+
+      if (c.grade) {
+        const label = document.createElementNS(svgNS, "text");
+        label.setAttribute("x", cx);
+        label.setAttribute("y", cy);
+        label.setAttribute("font-size", r * 1.25);
+        label.setAttribute("fill", contrastTextColor(c.hold_color));
+        label.setAttribute("class", "map-dot-grade");
+        label.textContent = c.grade;
+        svg.appendChild(label);
+      }
+    }
+
+    const noun = mapActiveType === "boulder" ? "boulders" : "routes";
+    document.getElementById("map-count").textContent = shown === total ? `${total} ${noun}` : `${shown} van ${total} ${noun}`;
+
+    if (mapZoomedWallId) {
+      const wall = wallsById.get(mapZoomedWallId);
+      if (wall && applyWallZoom(svg, wall)) {
+        document.getElementById("map-zoom-reset").classList.remove("hidden");
+      } else {
+        mapZoomedWallId = null;
+      }
+    }
+  }
+
+  document.getElementById("map-tabs").addEventListener("click", e => {
+    const btn = e.target.closest("button[data-type]");
+    if (!btn) return;
+    mapActiveType = btn.dataset.type;
+    renderMap();
+  });
+  document.getElementById("map-only-todo").addEventListener("change", renderMap);
+  document.getElementById("map-grade-min").addEventListener("change", () => onMapGradeChange("min"));
+  document.getElementById("map-grade-max").addEventListener("change", () => onMapGradeChange("max"));
+  document.getElementById("map-zoom-reset").addEventListener("click", resetMapZoom);
+  document.getElementById("map-canvas").addEventListener("click", e => {
+    if (e.target.tagName !== "circle") hideMapTooltip();
+  });
+
+  // ---------- klimlijst ----------
+  function gradeSortValue(grade) {
+    if (!grade) return -1;
+    const m = /^(\d+)([a-cA-C]?)([+⁺]?)$/.exec(grade);
+    if (!m) return -1;
+    const letterMap = {"":0, a:0, b:1, c:2};
+    return parseInt(m[1], 10) + (letterMap[m[2].toLowerCase()] + (m[3] ? 0.5 : 0)) / 3;
+  }
+
+  function populateClimbFilters() {
+    const grades = [...new Set(P.climbs.map(c => c.grade).filter(Boolean))].sort((a, b) => gradeSortValue(a) - gradeSortValue(b));
+    const gyms = [...new Set(P.climbs.map(c => c.gym_id).filter(Boolean))];
+    const gradeSel = document.getElementById("f-grade");
+    const keepGrade = grades.includes(gradeSel.value) ? gradeSel.value : "";
+    gradeSel.length = 1;
+    document.getElementById("f-gym").length = 1;
+    for (const g of grades) gradeSel.insertAdjacentHTML("beforeend", `<option value="${escapeHtml(g)}">${escapeHtml(g)}</option>`);
+    const gymSel = document.getElementById("f-gym");
+    const gymName = (DATA.me.gym && DATA.me.gym.name) || null;
+    for (const g of gyms) gymSel.insertAdjacentHTML("beforeend", `<option value="${escapeHtml(g)}">${escapeHtml(g === (DATA.me.gym || {}).id ? (gymName || g) : g)}</option>`);
+    gymSel.classList.toggle("hidden", gyms.length <= 1);
+    gradeSel.value = keepGrade;
+    fillTagFilter("f-style", "styles");
+    fillTagFilter("f-hold", "holds");
+  }
+
+  // Keuzelijst met alle stijlen/holds die in de klimlijst van dit profiel voorkomen.
+  function fillTagFilter(id, key) {
+    const sel = document.getElementById(id);
+    const counts = {};
+    for (const c of P.climbs) for (const t of c[key] || []) counts[t] = (counts[t] || 0) + 1;
+    const names = Object.keys(counts).sort((a, b) => a.localeCompare(b, "nl"));
+    const keep = names.includes(sel.value) ? sel.value : "";
+    sel.length = 1;
+    for (const n of names) sel.insertAdjacentHTML("beforeend", `<option value="${escapeHtml(n)}">${escapeHtml(n)} (${counts[n]})</option>`);
+    sel.value = keep;
+    sel.classList.toggle("hidden", !names.length);
+  }
+
+  function currentFilters() {
+    return {
+      type: document.getElementById("f-type").value,
+      grade: document.getElementById("f-grade").value,
+      gym: document.getElementById("f-gym").value,
+      style: document.getElementById("f-style").value,
+      hold: document.getElementById("f-hold").value,
+      search: document.getElementById("f-search").value.trim().toLowerCase(),
+      from: document.getElementById("f-from").value,
+      to: document.getElementById("f-to").value,
+    };
+  }
+
+  function renderClimbs() {
+    const f = currentFilters();
+    let rows = P.climbs.filter(c => {
+      if (f.type && c.type !== f.type) return false;
+      if (f.grade && c.grade !== f.grade) return false;
+      if (f.gym && c.gym_id !== f.gym) return false;
+      if (f.style && !(c.styles || []).includes(f.style)) return false;
+      if (f.hold && !(c.holds || []).includes(f.hold)) return false;
+      if (f.search && !(c.name || "").toLowerCase().includes(f.search)) return false;
+      if (f.from && (!c.climbed_at || c.climbed_at < f.from)) return false;
+      if (f.to && (!c.climbed_at || c.climbed_at > f.to)) return false;
+      return true;
+    });
+
+    rows = rows.map(c => Object.assign({grade_sort: gradeSortValue(c.grade)}, c));
+    rows.sort((a, b) => {
+      let av = a[sortKey], bv = b[sortKey];
+      if (av == null) av = "";
+      if (bv == null) bv = "";
+      if (av < bv) return sortDir === "asc" ? -1 : 1;
+      if (av > bv) return sortDir === "asc" ? 1 : -1;
+      return 0;
+    });
+
+    const tbody = document.getElementById("climbs-tbody");
+    tbody.innerHTML = "";
+    document.getElementById("climbs-empty").classList.toggle("hidden", rows.length > 0);
+    for (const c of rows) {
+      const tr = document.createElement("tr");
+      tr.innerHTML = `
+        <td class="date-cell">${fmtDate(c.climbed_at)}</td>
+        <td>${c.type === "boulder" ? "Boulder" : "Route"}</td>
+        <td>${escapeHtml(c.name || "")}</td>
+        <td class="grade-cell">${escapeHtml(c.grade || "–")}</td>
+        <td>${escapeHtml(c.wall || "")}</td>
+        <td>${c.tick_type ? `<span class="tag ${c.tick_type}">${TICK_LABELS[c.tick_type] || c.tick_type}</span>` : "–"}</td>
+        <td>${c.tries ?? "–"}</td>
+        <td class="tags-cell">${escapeHtml((c.styles || []).join(", "))}${(c.styles || []).length && (c.holds || []).length ? " · " : ""}<span class="hold-tag">${escapeHtml((c.holds || []).join(", "))}</span></td>
+      `;
+      tbody.appendChild(tr);
+    }
+
+    document.querySelectorAll("#climbs-section th[data-key]").forEach(th => {
+      th.querySelector(".arrow")?.remove();
+      if (th.dataset.key === sortKey) th.insertAdjacentHTML("beforeend", ` <span class="arrow">${sortDir === "asc" ? "▲" : "▼"}</span>`);
+    });
+  }
+
+  document.querySelectorAll("#climbs-section th[data-key]").forEach(th => {
+    th.addEventListener("click", () => {
+      const key = th.dataset.key;
+      if (sortKey === key) sortDir = sortDir === "asc" ? "desc" : "asc";
+      else { sortKey = key; sortDir = "asc"; }
+      renderClimbs();
+    });
+  });
+  ["f-type", "f-grade", "f-gym", "f-style", "f-hold", "f-search", "f-from", "f-to"].forEach(id => {
+    document.getElementById(id).addEventListener("input", renderClimbs);
+  });
+
+  // ---------- volgers ----------
+  function renderFollowing() {
+    const grid = document.getElementById("following-grid");
+    grid.innerHTML = "";
+    document.getElementById("following-title").textContent = who("Mensen die ik volg", "Mensen die {naam} volgt");
+    const empty = document.getElementById("following-empty");
+    empty.textContent = who("Je volgt nog niemand — of er is geen data opgehaald.", "{naam} volgt nog niemand — of er is geen data opgehaald.");
+    empty.classList.toggle("hidden", P.following.length > 0);
+    for (const person of P.following) {
+      const card = document.createElement("div");
+      card.className = "follow-card";
+      if (person.id !== P.id && DATA.profiles.some(p => p.id === person.id)) {
+        card.dataset.switch = "";
+        card.title = `Bekijk het dashboard van ${person.name || "deze persoon"}`;
+        card.addEventListener("click", () => switchProfile(person.id));
+      }
+      const head = document.createElement("div");
+      head.className = "head";
+      head.appendChild(avatarEl(person.avatar_url, person.name, 36));
+      const name = document.createElement("div");
+      name.className = "name";
+      name.textContent = person.name || "Onbekend";
+      head.appendChild(name);
+      card.appendChild(head);
+
+      const badges = document.createElement("div");
+      badges.className = "badges";
+      if (person.routes_grade) badges.innerHTML += `<span class="badge">Routes ${escapeHtml(person.routes_grade)}</span>`;
+      if (person.boulders_grade) badges.innerHTML += `<span class="badge">Boulders ${escapeHtml(person.boulders_grade)}</span>`;
+      card.appendChild(badges);
+
+      const recent = person.recent || [];
+      if (recent.length) {
+        for (const r of recent.slice(0, 5)) {
+          const row = document.createElement("div");
+          row.className = "recent-row";
+          row.innerHTML = `<span>${fmtDate(r.climbed_at)} · ${r.type === "boulder" ? "boulder" : "route"}</span><span>${r.climbs}×</span>`;
+          card.appendChild(row);
+        }
+      } else {
+        const row = document.createElement("div");
+        row.className = "recent-row";
+        row.textContent = "Geen recente activiteit.";
+        card.appendChild(row);
+      }
+      grid.appendChild(card);
+    }
+
+    const followersLine = document.getElementById("followers-line");
+    followersLine.textContent = P.followers.length
+      ? `${who("Jij wordt gevolgd door", "{naam} wordt gevolgd door")}: ${P.followers.map(f => f.name).filter(Boolean).join(", ")}`
+      : "";
+  }
+
+  let changesDays = 30;
+  let changesType = "";
+
+  function changeItem(c, gone, tickedIds) {
+    const second = c.hold_color_secondary;
+    const swatch = second
+      ? `background:linear-gradient(135deg, ${escapeHtml(c.hold_color)} 50%, ${escapeHtml(second)} 50%)`
+      : `background:${escapeHtml(c.hold_color || "transparent")}`;
+    const where = [c.type === "boulder" ? "boulder" : null, c.wall, c.wall_section && `lijn ${c.wall_section}`].filter(Boolean).join(" · ");
+    const date = gone ? `weg sinds ${fmtDate(c.removed_at)}` : `geplaatst ${fmtDate(c.in_at)}`;
+    // Verwijderde routes staan niet meer in de klimlijst; mijn eigen tick
+    // staat nog in de routegeschiedenis, die van anderen is dan onbekend.
+    const ticked = tickedIds.has(c.id) || (P.is_me && c.ticked);
+    const done = ticked ? " · ✓ getopt" : "";
+    return `<li class="${gone ? "gone" : ""}">
+      <span class="hold" style="${swatch}" aria-hidden="true"></span>
+      <span style="min-width:0"><span class="rname" title="${escapeHtml(c.name || "")}">${escapeHtml(c.name || "Naamloos")}</span>
+        <span class="rmeta">${escapeHtml(where)}${done}</span></span>
+      <span class="rright"><span class="badge">${escapeHtml(c.grade || "?")}</span><span class="rdate">${date}</span></span>
+    </li>`;
+  }
+
+  function isoDaysAgo(days) {
+    const d = new Date(); d.setHours(0, 0, 0, 0); d.setDate(d.getDate() - days);
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+  }
+
+  function renderRouteChanges() {
+    const rc = DATA.route_changes || {};
+    const cutoff = changesDays ? isoDaysAgo(changesDays) : "";
+    const keep = (c, dateKey) => (!changesType || c.type === changesType) && (!cutoff || (c[dateKey] || "") >= cutoff);
+    const newest = (rc.newest || []).filter(c => keep(c, "in_at"));
+    const removed = (rc.removed || []).filter(c => keep(c, "removed_at"));
+    const tickedIds = new Set(P.climbs.filter(c => c.ticked).map(c => c.id));
+    const period = changesDays ? `de laatste ${changesDays} dagen` : "deze periode";
+    document.getElementById("newest-count").textContent = `(${newest.length})`;
+    document.getElementById("removed-count").textContent = `(${removed.length})`;
+    document.getElementById("newest-list").innerHTML = newest.length
+      ? newest.map(c => changeItem(c, false, tickedIds)).join("")
+      : `<div class="empty">${(rc.newest || []).length ? `Niets nieuw geplaatst in ${period}.` : "Nog geen routedata."}</div>`;
+    const since = rc.tracking_since ? fmtDate(rc.tracking_since) : "de eerste verversing";
+    document.getElementById("removed-list").innerHTML = removed.length
+      ? removed.map(c => changeItem(c, true, tickedIds)).join("")
+      : `<div class="empty">Niets verwijderd in ${period}.</div>`;
+    document.getElementById("removed-note").textContent =
+      `TopLogger toont verwijderde routes niet; het dashboard houdt dit zelf bij sinds ${since} (per dagelijkse verversing).`;
+  }
+
+  // Ranglijst "tops deze week" van de hele hal (vanaf maandag), met de
+  // getoonde persoon en wie die volgt gemarkeerd. Top 10, plus je eigen plek
+  // als je daarbuiten staat.
+  const WEEK_RANK_SIZE = 10;
+  let weekRankType = "route";
+  function renderWeekRanking() {
+    const hw = DATA.hall_week;
+    const lists = (hw && hw.lists) || {};
+    const types = Object.keys(lists);
+    document.getElementById("week-rank-section").classList.toggle("hidden", !types.length);
+    if (!types.length) return;
+    if (!types.includes(weekRankType)) weekRankType = types[0];
+    document.getElementById("week-rank-tabs").innerHTML = types.length < 2 ? "" : types.map(t =>
+      `<button data-type="${t}" class="${t === weekRankType ? "active" : ""}">${t === "boulder" ? "Boulders" : "Routes"}</button>`).join("");
+    const rows = lists[weekRankType];
+    const followed = new Set((P.following || []).map(f => f.id));
+    const mine = rows.find(r => r.user_id === P.id);
+    const shown = rows.slice(0, WEEK_RANK_SIZE);
+    const row = r => {
+      const cls = r.user_id === P.id ? "me" : followed.has(r.user_id) ? "followed" : "";
+      const tag = r.user_id === P.id ? (P.is_me ? "jij" : "") : followed.has(r.user_id) ? "volgend" : "";
+      return `<li class="${cls}"><span class="pos">${r.rank}</span>`
+        + `<span class="who">${escapeHtml(r.name)}${tag ? `<small>${tag}</small>` : ""}</span>`
+        + `<span class="grade">${escapeHtml(r.grade || "–")}</span><span class="n">${r.tops}</span></li>`;
+    };
+    let html = shown.map(row).join("");
+    if (mine && mine.rank > WEEK_RANK_SIZE) html += `<li class="gap" aria-hidden="true">⋮</li>` + row(mine);
+    document.getElementById("week-rank-list").innerHTML = html;
+    const since = hw.week_start ? new Date(hw.week_start + "T00:00:00").toLocaleDateString("nl-NL", {weekday: "long", day: "numeric", month: "long"}) : "maandag";
+    document.getElementById("week-rank-note").textContent =
+      `Tops sinds ${since}, ${rows.length} klimmers in totaal${mine ? "" : `; ${who("jij staat", "{naam} staat")} er (nog) niet in`}. `
+      + "Alleen routes die nu hangen en klimmers met een zichtbaar TopLogger-profiel.";
+  }
+  document.getElementById("week-rank-tabs").addEventListener("click", e => {
+    const btn = e.target.closest("button");
+    if (!btn) return;
+    weekRankType = btn.dataset.type;
+    renderWeekRanking();
+  });
+
+  function bindChips(id, onPick) {
+    document.getElementById(id).addEventListener("click", e => {
+      const btn = e.target.closest("button");
+      if (!btn) return;
+      document.querySelectorAll(`#${id} button`).forEach(b => b.classList.toggle("active", b === btn));
+      onPick(btn);
+      if (DATA) renderRouteChanges();
+    });
+  }
+  bindChips("changes-period", btn => { changesDays = parseInt(btn.dataset.days, 10) || 0; });
+  bindChips("changes-type", btn => { changesType = btn.dataset.type; });
+
+  function renderKudos() {
+    const body = document.getElementById("kudos-body");
+    const rows = P.kudos;
+    if (!rows.length) { body.innerHTML = '<div class="empty">Nog geen kudo-data — draai <code>fetch.py</code> opnieuw.</div>'; return; }
+    const max = Math.max(1, ...rows.map(r => Math.max(r.given || 0, r.received || 0)));
+    const pct = n => (100 * (n || 0) / max).toFixed(1) + "%";
+    const balLabel = b => b > 0 ? ["+" + b, "surplus"] : b < 0 ? ["−" + Math.abs(b), "tekort"] : ["0", "gelijk"];
+    let html = `<div class="kudos-head"><span></span><span class="l">← ${who("door jou gegeven", "door {naam} gegeven")}</span><span class="r">${who("aan jou gegeven", "aan {naam} gegeven")} →</span><span class="s">saldo</span></div>`;
+    for (const r of rows) {
+      const givenKnown = r.given !== null && r.given !== undefined;
+      const [bal, balWord] = balLabel(r.balance);
+      const name = escapeHtml(r.name || "Onbekend");
+      html += `<div class="kudo-row">
+        <span class="who" title="${name}">${name}</span>
+        <span class="kudo-side given" title="${givenKnown ? `${who("Jij gaf", "{naam} gaf")} ${name} ${r.given} kudo('s)` : who("Profiel afgeschermd: niet te zien wat jij gaf", "Profiel afgeschermd: niet te zien wat {naam} gaf")}">
+          <span class="kudo-n">${givenKnown ? r.given : "?"}</span><span class="kudo-bar" style="width:${pct(r.given)}"></span>
+        </span>
+        <span class="kudo-side received" title="${name} gaf ${who("jou", "{naam}")} ${r.received} kudo('s)">
+          <span class="kudo-bar" style="width:${pct(r.received)}"></span><span class="kudo-n">${r.received}</span>
+        </span>
+        <span class="kudo-bal">${bal}<small>${balWord}</small></span>
+      </div>`;
+    }
+    body.innerHTML = html;
+    const hidden = rows.filter(r => r.given === null || r.given === undefined).map(r => escapeHtml(r.name || "?"));
+    body.insertAdjacentHTML("beforeend",
+      `<div class="kudos-note">Kudo's = likes op sessies, alle tijd. Saldo = ontvangen − gegeven.${hidden.length ? ` Afgeschermd profiel (gegeven onbekend): ${hidden.join(", ")}.` : ""}</div>`);
+  }
+
+  // Alles wat afhangt van wiens dashboard je bekijkt.
+  function renderProfile() {
+    renderProfileSwitch();
+    renderHero();
+    renderLastSession();
+    renderNextUp();
+    renderChallenges();
+    renderActivityStats();
+    renderHeatmap();
+    renderProgressHistory();
+    populateClimbFilters();
+    renderProgress();
+    renderWeekRanking();
+    renderMap();
+    renderClimbs();
+    renderRouteChanges();
+    renderFollowing();
+    renderKudos();
+  }
+
+  // Knop naar het scherm voor in de hal (Ranglijst / Routes): online met de sleutel uit mijn (versleutelde) data,
+  // lokaal gewoon tv.html. Wie een eigen dashboard heeft (shared) ziet 'm niet.
+  function renderTvLink() {
+    const link = document.getElementById("tv-link");
+    const key = DATA.hal_tv_key;
+    link.classList.toggle("hidden", !key && !!DATA.shared);
+    link.href = key ? "tv.html#" + key : "tv.html";
+  }
+
+  // ---------- verversen in de cloud ----------
+  // Alleen in mijn eigen (versleutelde) data staat DATA.cloud: een token dat
+  // alleen de workflow mag starten/bekijken en het minutenverbruik mag lezen.
+  const GH_API = "https://api.github.com";
+  let cloudBusy = false;
+  const cloudEl = id => document.getElementById(id);
+
+  function ghFetch(path, opts = {}) {
+    return fetch(GH_API + path, Object.assign({}, opts, {
+      headers: {Authorization: "Bearer " + DATA.cloud.token, Accept: "application/vnd.github+json", "X-GitHub-Api-Version": "2022-11-28"},
+      cache: "no-store",
+    }));
+  }
+
+  async function latestRun() {
+    const c = DATA.cloud;
+    const r = await ghFetch(`/repos/${c.repo}/actions/workflows/${c.workflow}/runs?per_page=1`);
+    if (!r.ok) throw new Error(r.status === 401 ? "token verlopen of ingetrokken" : "GitHub gaf HTTP " + r.status);
+    return (await r.json()).workflow_runs[0] || null;
+  }
+
+  function fmtWhen(iso) {
+    const d = new Date(iso), today = new Date();
+    const time = d.toLocaleTimeString("nl-NL", {hour: "2-digit", minute: "2-digit"});
+    if (d.toDateString() === today.toDateString()) return "vandaag " + time;
+    const y = new Date(today); y.setDate(y.getDate() - 1);
+    if (d.toDateString() === y.toDateString()) return "gisteren " + time;
+    return d.toLocaleDateString("nl-NL", {day: "numeric", month: "short"}) + " " + time;
+  }
+
+  async function showLastRun() {
+    const el = cloudEl("cp-last");
+    try {
+      const run = await latestRun();
+      if (!run) { el.textContent = "Nog geen verversing gedraaid."; return; }
+      const link = `<a href="${escapeHtml(run.html_url)}" target="_blank" rel="noopener">`;
+      if (run.status !== "completed") el.innerHTML = `${link}Verversing bezig</a> (gestart ${fmtWhen(run.created_at)})`;
+      else if (run.conclusion === "success") el.textContent = "Laatst ververst: " + fmtWhen(run.updated_at);
+      else el.innerHTML = `${link}Laatste verversing mislukt</a> (${fmtWhen(run.created_at)}). Login verlopen? Dubbelklik cloud-login.bat.`;
+    } catch (e) {
+      el.textContent = "Kon GitHub niet bereiken (" + e.message + ").";
+    }
+  }
+
+  // Minuten van deze maand. GitHub heeft hier meerdere API's voor gehad; we
+  // proberen de nieuwe eerst en vallen terug op de oude.
+  async function minutesThisMonth() {
+    const user = DATA.cloud.repo.split("/")[0];
+    const now = new Date(), q = `year=${now.getFullYear()}&month=${now.getMonth() + 1}`;
+    const isMinutes = it => /actions/i.test(it.product || "") && /minute/i.test(it.unitType || "");
+    let r = await ghFetch(`/users/${user}/settings/billing/usage/summary?${q}&product=actions`);
+    if (r.ok) {
+      const items = ((await r.json()).usageItems || []).filter(isMinutes);
+      return {used: items.reduce((n, it) => n + (it.grossQuantity || 0), 0)};
+    }
+    r = await ghFetch(`/users/${user}/settings/billing/usage?${q}`);
+    if (r.ok) {
+      const items = ((await r.json()).usageItems || []).filter(isMinutes);
+      return {used: items.reduce((n, it) => n + (it.quantity || 0), 0)};
+    }
+    r = await ghFetch(`/users/${user}/settings/billing/actions`);
+    if (r.ok) {
+      const j = await r.json();
+      return {used: j.total_minutes_used || 0, included: j.included_minutes};
+    }
+    throw new Error("HTTP " + r.status);
+  }
+
+  async function showMinutes() {
+    const num = cloudEl("cp-mnum"), bar = cloudEl("cp-mbar"), note = cloudEl("cp-mnote");
+    try {
+      const m = await minutesThisMonth();
+      const included = m.included || DATA.cloud.included_minutes || 2000;
+      const used = Math.round(m.used);
+      const left = Math.max(0, included - used);
+      const pct = Math.min(100, used / included * 100);
+      num.textContent = `${used.toLocaleString("nl-NL")} / ${included.toLocaleString("nl-NL")}`;
+      bar.style.width = pct + "%";
+      bar.className = pct >= 100 ? "full" : pct >= 75 ? "warn" : "";
+      const now = new Date();
+      const reset = new Date(now.getFullYear(), now.getMonth() + 1, 1);
+      note.textContent = `Nog ${left.toLocaleString("nl-NL")} minuten over · weer vol op ${reset.toLocaleDateString("nl-NL", {day: "numeric", month: "long"})}. Al je privé-repo's tellen mee.`;
+    } catch (e) {
+      num.textContent = "–";
+      note.textContent = "Minutenverbruik niet op te vragen: het token mist waarschijnlijk het recht 'Plan' (lezen).";
+    }
+  }
+
+  function setCloudStatus(text, cls = "") {
+    const el = cloudEl("cp-status");
+    el.textContent = text;
+    el.className = "cp-status" + (cls ? " " + cls : "");
+  }
+
+  const pause = ms => new Promise(r => setTimeout(r, ms));
+
+  async function runRefreshNow() {
+    const c = DATA.cloud;
+    cloudBusy = true;
+    cloudEl("cp-run").disabled = true;
+    try {
+      setCloudStatus("Starten…");
+      const before = await latestRun();
+      const r = await ghFetch(`/repos/${c.repo}/actions/workflows/${c.workflow}/dispatches`, {method: "POST", body: JSON.stringify({ref: "main"})});
+      if (r.status !== 204) throw new Error(r.status === 401 || r.status === 403 ? "token mag de verversing niet starten" : "GitHub gaf HTTP " + r.status);
+
+      // Wachten op de nieuwe run (die heeft een ander id dan de vorige).
+      let run = null;
+      for (const start = Date.now(); Date.now() - start < 12 * 60e3; await pause(8000)) {
+        const latest = await latestRun();
+        if (latest && (!before || latest.id !== before.id)) {
+          run = latest;
+          if (run.status === "completed") break;
+          setCloudStatus(run.status === "in_progress" ? "Bezig met ophalen bij TopLogger…" : "In de wachtrij bij GitHub…");
+        }
+      }
+      if (!run || run.status !== "completed") throw new Error("duurt ongewoon lang; kijk later nog eens");
+      if (run.conclusion !== "success") throw new Error("verversing mislukt (login verlopen? dubbelklik cloud-login.bat)");
+
+      // Daarna zet GitHub Pages de site nog online: wachten tot de data echt nieuw is.
+      setCloudStatus("Klaar bij GitHub, nieuwe data wordt online gezet…");
+      const old = DATA.generated_at;
+      for (const start = Date.now(); Date.now() - start < 5 * 60e3; await pause(10000)) {
+        const fresh = await tryFetch();
+        if (fresh && fresh.generated_at && fresh.generated_at !== old) {
+          boot(fresh);
+          setCloudStatus("Bijgewerkt ✓", "ok");
+          return;
+        }
+      }
+      setCloudStatus("Ververst; klik over een minuutje op ↻ als je het nog niet ziet.", "ok");
+    } catch (e) {
+      setCloudStatus("Mislukt: " + e.message, "err");
+    } finally {
+      cloudBusy = false;
+      cloudEl("cp-run").disabled = false;
+      showLastRun();
+      showMinutes();
+    }
+  }
+
+  function toggleCloudPanel(open) {
+    const panel = cloudEl("cloud-panel");
+    if (open === undefined) open = panel.classList.contains("hidden");
+    panel.classList.toggle("hidden", !open);
+    cloudEl("cloud-btn").setAttribute("aria-expanded", open ? "true" : "false");
+    if (open) { showLastRun(); showMinutes(); }
+  }
+
+  function renderCloudButton() {
+    const has = !!(DATA.cloud && DATA.cloud.token && DATA.cloud.repo);
+    cloudEl("cloud-btn").classList.toggle("hidden", !has);
+    if (!has) cloudEl("cloud-panel").classList.add("hidden");
+  }
+
+  cloudEl("cloud-btn").addEventListener("click", () => toggleCloudPanel());
+  cloudEl("cp-close").addEventListener("click", () => toggleCloudPanel(false));
+  cloudEl("cp-run").addEventListener("click", () => { if (!cloudBusy) runRefreshNow(); });
+  document.addEventListener("keydown", e => { if (e.key === "Escape") toggleCloudPanel(false); });
+
+  function render() {
+    renderTvLink();
+    renderCloudButton();
+    selectProfile(P ? P.id : storedProfileId());
+    renderGlossary();
+    renderProfile();
+    showTab(activeTab, {scroll: false});
+  }
+
+  document.getElementById("reload-btn").addEventListener("click", async () => {
+    // Haalt via het netwerk op (sw.js: network-first); kijkt meteen ook of er
+    // een nieuwe versie van de app klaarstaat.
+    if (swRegistration) swRegistration.update().catch(() => {});
+    const fresh = await tryFetch();
+    if (fresh) boot(fresh);
+  });
+
+  document.getElementById("file-picker-btn").addEventListener("click", () => document.getElementById("file-picker").click());
+  document.getElementById("file-picker").addEventListener("change", e => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      try { boot(JSON.parse(reader.result)); }
+      catch (err) { alert("Kon dit bestand niet lezen als JSON: " + err.message); }
+    };
+    reader.readAsText(file);
+  });
+
+  // Een open tabblad (vooral op de telefoon) toont anders dagenlang dezelfde
+  // data: bij terugkeren naar het tabblad stil kijken of er nieuwere data is.
+  async function refreshIfNewer() {
+    if (!DATA || document.visibilityState !== "visible") return;
+    let fresh = await fetchJson("data/dashboard.json");
+    if (!fresh && sitePassword) {
+      const enc = await fetchJson("data/dashboard.enc.json");
+      if (enc) {
+        encryptedData = enc;
+        try { fresh = await unlock(sitePassword); } catch (e) {}
+      }
+    }
+    if (fresh && fresh.generated_at !== DATA.generated_at) boot(fresh);
+    else if (fresh) updateOfflineBadge();
+  }
+  document.addEventListener("visibilitychange", refreshIfNewer);
+  window.addEventListener("pageshow", e => { if (e.persisted) refreshIfNewer(); });
+
+  // ---------- PWA: service worker ----------
+  // Alleen online (https, GitHub Pages); lokaal via http://127.0.0.1 niet,
+  // zodat een gecachte pagina daar nooit een nieuwe versie in de weg zit.
+  let swRegistration = null;
+  if ("serviceWorker" in navigator && location.protocol === "https:") {
+    let reloading = false;
+    navigator.serviceWorker.addEventListener("controllerchange", () => {
+      // Alleen na een klik op "Vernieuwen"; de allereerste installatie neemt
+      // de pagina ook over (clients.claim) en mag dan niet herladen.
+      if (reloading) location.reload();
+    });
+    const offerUpdate = worker => {
+      document.getElementById("update-banner").classList.remove("hidden");
+      document.getElementById("update-btn").onclick = () => {
+        reloading = true;
+        worker.postMessage("SKIP_WAITING");
+      };
+    };
+    navigator.serviceWorker.register("./sw.js", {scope: "./"}).then(reg => {
+      swRegistration = reg;
+      if (reg.waiting && navigator.serviceWorker.controller) offerUpdate(reg.waiting);
+      reg.addEventListener("updatefound", () => {
+        const worker = reg.installing;
+        worker.addEventListener("statechange", () => {
+          if (worker.state === "installed" && navigator.serviceWorker.controller) offerUpdate(worker);
+        });
+      });
+    }).catch(() => {});
+  }
+
+  tryFetch().then(data => { if (data) boot(data); });
+})();
+</script>
+</body>
+</html>

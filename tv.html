@@ -1,0 +1,979 @@
+<!doctype html>
+<html lang="nl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>In de hal</title>
+<link rel="icon" href="icons/icon.svg" type="image/svg+xml">
+<style>
+  /* Hal-tv: één vast 1920×1080-podium dat naar elk scherm geschaald wordt
+     (zie fitStage), dus alle maten hieronder zijn tv-pixels. Altijd donker:
+     prettiger in een hal en minder inbranden. */
+  :root{
+    --bg:#15120d; --bg-alt:#1d1912; --card:#241f18; --card-2:#2b251c; --border:#463f31; --border-soft:#342e23;
+    --text:#f5f0e2; --text-dim:#bdb39c; --text-faint:#857c67;
+    --accent:#ff6a2e; --accent-ink:#1a0e04; --accent-2:#3fae8f;
+    --up:#5bd17a; --down:#ef7b5a;
+    --gold:#f2bf4f; --silver:#d5cdb8; --bronze:#cd8552;
+    --tape:#ebe1c4; --tape-ink:#1f1b13;
+    --bolt-hole:rgba(0,0,0,.7); --bolt-rim:rgba(255,255,255,.07);
+    --font-body: "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    --font-head: "Bahnschrift", "Roboto Condensed", "Arial Narrow", "Segoe UI Semibold", var(--font-body);
+    --font-num: "Bahnschrift", "Roboto Condensed", "DIN Alternate", var(--font-body);
+    --font-mono: "Cascadia Mono", "SF Mono", Consolas, "Roboto Mono", monospace;
+    --grain: url("data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20width='140'%20height='140'%3E%3Cfilter%20id='n'%3E%3CfeTurbulence%20type='fractalNoise'%20baseFrequency='0.85'%20numOctaves='2'%20stitchTiles='stitch'/%3E%3CfeColorMatrix%20type='matrix'%20values='0%200%200%200%200%200%200%200%200%200%200%200%200%200%200%200%200%200%200.05%200'/%3E%3C/filter%3E%3Crect%20width='100%25'%20height='100%25'%20filter='url(%23n)'/%3E%3C/svg%3E");
+  }
+  *{box-sizing:border-box;}
+  html, body{margin:0; height:100%; overflow:hidden; background:#0c0a07; color:var(--text);}
+  body{font:24px/1.3 var(--font-body); -webkit-font-smoothing:antialiased; cursor:none;}
+
+  #stage{
+    position:absolute; left:0; top:0; width:1920px; height:1080px; transform-origin:0 0;
+    background:
+      radial-gradient(circle at 50% 50%, var(--bolt-hole) 0 2.5px, var(--bolt-rim) 3px 4px, transparent 4.5px) 0 0 / 48px 48px,
+      var(--grain), var(--bg);
+    display:grid; grid-template-rows:118px 1fr; overflow:hidden;
+  }
+
+  /* ---------- kop ---------- */
+  header{
+    position:relative; display:flex; align-items:center; gap:40px; padding:0 48px;
+    background:var(--bg-alt); border-bottom:1px solid var(--border);
+  }
+  header::after{
+    content:""; position:absolute; left:0; right:0; bottom:-7px; height:7px;
+    background:repeating-linear-gradient(135deg, var(--accent) 0 10px, transparent 10px 22px); opacity:.65;
+  }
+  .brand{display:flex; flex-direction:column; gap:2px; min-width:0;}
+  .brand .gym{font:700 46px/1 var(--font-head); text-transform:uppercase; letter-spacing:.01em; white-space:nowrap;}
+  .brand .gym .dot{color:var(--accent);}
+  .brand .sub{font:600 19px/1 var(--font-head); color:var(--text-faint); text-transform:uppercase; letter-spacing:.16em;}
+  .headline{flex:1; display:flex; justify-content:center; gap:44px;}
+  .hstat{display:flex; flex-direction:column; align-items:center;}
+  .hstat b{font:700 44px/1 var(--font-num); font-variant-numeric:tabular-nums;}
+  .hstat span{font-size:16px; color:var(--text-faint); text-transform:uppercase; letter-spacing:.1em; margin-top:7px; white-space:nowrap;}
+  .hstat.hot b{color:var(--accent);}
+  .clock{text-align:right;}
+  .clock .time{font:700 64px/1 var(--font-num); font-variant-numeric:tabular-nums; letter-spacing:.02em;}
+  .clock .date{font-size:19px; color:var(--text-dim); margin-top:4px; white-space:nowrap;}
+
+  /* ---------- raster ---------- */
+  main{
+    display:grid; grid-template-columns:610px 360px 1fr; gap:36px;
+    padding:34px 44px 30px; min-height:0;
+  }
+  .col{display:flex; flex-direction:column; gap:26px; min-height:0;}
+  .split{display:grid; grid-template-columns:1fr 1fr; gap:30px; min-height:0;}
+
+  /* koppen = strook routetape */
+  .tape-h{
+    align-self:flex-start; display:inline-flex; align-items:center; gap:12px;
+    padding:7px 20px 6px 16px; margin:0 0 14px;
+    background:var(--accent); color:var(--accent-ink);
+    font:700 22px/1 var(--font-head); text-transform:uppercase; letter-spacing:.07em;
+    transform:rotate(-1.2deg); transform-origin:left center;
+    clip-path:polygon(0 8%, 2% 0, 30% 5%, 60% 0, 98% 4%, 100% 0, 99% 50%, 100% 100%, 97% 94%, 65% 100%, 30% 95%, 3% 100%, 0 92%, 1.5% 50%);
+  }
+  .tape-h.alt{background:var(--tape); color:var(--tape-ink);}
+  .block{display:flex; flex-direction:column; min-height:0;}
+  .note{font-size:15px; color:var(--text-faint); line-height:1.35;}
+
+  /* plaat met bouten */
+  .plate{
+    position:relative; background:var(--card); border:1px solid var(--border); border-radius:14px;
+    box-shadow:0 1px 2px rgba(0,0,0,.4), 0 14px 34px rgba(0,0,0,.35);
+  }
+  .plate::before, .plate::after, .plate .bolt-b::before, .plate .bolt-b::after{
+    content:""; position:absolute; width:9px; height:9px; border-radius:50%;
+    background:radial-gradient(circle at 40% 40%, #6b6250 0 1.5px, #0d0b08 2.5px); box-shadow:0 0 0 2px var(--border-soft);
+  }
+  .plate .bolt-b{position:absolute; inset:0; pointer-events:none;}
+  .plate::before{left:12px; top:12px;} .plate::after{right:12px; top:12px;}
+  .plate .bolt-b::before{left:12px; bottom:12px;} .plate .bolt-b::after{right:12px; bottom:12px;}
+
+  /* ---------- ranglijst ---------- */
+  #rank-plate{flex:1; padding:22px 26px 18px; display:flex; flex-direction:column; min-height:0;}
+  .rank-tabs{display:grid; grid-auto-flow:column; grid-auto-columns:1fr; gap:6px; margin-bottom:6px;}
+  .rank-tab{
+    position:relative; overflow:hidden; text-align:center; padding:9px 4px 10px; border-radius:8px;
+    font:700 19px/1 var(--font-head); text-transform:uppercase; letter-spacing:.05em; color:var(--text-faint);
+    background:var(--bg-alt); border:1px solid var(--border-soft);
+  }
+  .rank-tab.active{color:var(--text); border-color:var(--accent); background:var(--card-2);}
+  .rank-tab .bar{position:absolute; left:0; bottom:0; height:4px; width:0; background:var(--accent);}
+  .rank-tab.active .bar{animation:fill var(--rotate-ms) linear forwards;}
+  @keyframes fill{from{width:0;} to{width:100%;}}
+  .rank-caption{font-size:17px; color:var(--text-dim); margin:8px 2px 10px; min-height:22px;}
+  .rank-list{list-style:none; margin:0; padding:0; flex:1; display:flex; flex-direction:column; justify-content:space-between;}
+  .rank-row{
+    display:grid; grid-template-columns:62px 1fr auto 112px 76px; align-items:center; gap:14px;
+    padding:0 8px; height:62px; border-bottom:1px solid var(--border-soft);
+  }
+  .rank-row:last-child{border-bottom:0;}
+  .rank-pos{font:700 34px/1 var(--font-num); color:var(--text-faint); text-align:center; font-variant-numeric:tabular-nums;}
+  .rank-row.p1 .rank-pos, .rank-row.p2 .rank-pos, .rank-row.p3 .rank-pos{
+    width:50px; height:50px; border-radius:50%; display:flex; align-items:center; justify-content:center;
+    color:#1a140a; font-size:28px; justify-self:center;
+    box-shadow:inset -3px -3px 0 rgba(0,0,0,.25), inset 2px 2px 0 rgba(255,255,255,.45);
+  }
+  .rank-row.p1 .rank-pos{background:var(--gold);}
+  .rank-row.p2 .rank-pos{background:var(--silver);}
+  .rank-row.p3 .rank-pos{background:var(--bronze);}
+  .rank-name{font:600 29px/1.1 var(--font-body); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
+  .rank-row.p1 .rank-name{font-size:32px;}
+  .rank-tops{font:600 21px/1 var(--font-num); color:var(--text-dim); text-align:right; white-space:nowrap; font-variant-numeric:tabular-nums;}
+  .rank-tops small{font-size:15px; color:var(--text-faint); margin-left:4px;}
+  .rank-tops.lead{color:var(--accent); font-size:26px;}
+  .move{font:700 19px/1 var(--font-num); text-align:right; white-space:nowrap;}
+  .move.up{color:var(--up);} .move.down{color:var(--down);} .move.same{color:var(--text-faint);}
+  .move.new{color:var(--accent-ink); background:var(--accent); padding:4px 7px; border-radius:5px; font-size:14px; letter-spacing:.06em; justify-self:end;}
+  .rank-list.swap .rank-row{animation:rowIn .55s cubic-bezier(.2,.7,.3,1) both;}
+  @keyframes rowIn{from{opacity:0; transform:translateX(-26px);} to{opacity:1; transform:none;}}
+
+  /* grades = schilderstape */
+  .grade-tape{
+    display:inline-block; min-width:2.7em; text-align:center; justify-self:start;
+    background:var(--tape); color:var(--tape-ink); font:700 23px/1 var(--font-head);
+    padding:5px 9px 4px; transform:rotate(-2.5deg);
+    clip-path:polygon(0 6%, 8% 0, 50% 4%, 92% 0, 100% 8%, 97% 50%, 100% 92%, 90% 100%, 50% 96%, 10% 100%, 0 94%, 3% 50%);
+  }
+  li:nth-child(2n) .grade-tape{transform:rotate(1.8deg);}
+
+  /* grip = greepje */
+  .hold{
+    display:inline-block; width:26px; height:22px; flex:none;
+    border-radius:58% 42% 55% 45% / 46% 58% 42% 54%;
+    box-shadow:inset -3px -3px 0 rgba(0,0,0,.3), inset 2px 2px 0 rgba(255,255,255,.4);
+    border:1px solid rgba(0,0,0,.45);
+  }
+
+  /* ---------- wandkaart ---------- */
+  #map-plate{flex:1; padding:30px 18px 22px; display:flex; flex-direction:column; align-items:center; min-height:0;}
+  .map-box{position:relative; flex:1; width:100%; min-height:0;}
+  .map-box svg{position:absolute; left:0; top:0; width:100%; height:100%; overflow:visible;}
+  /* de plattegrond is lichtgrijs; omgekeerd past hij in het donkere scherm */
+  #map-base{filter:invert(1) sepia(.25) brightness(.78) contrast(1.05);}
+  .map-dot{stroke:#14110c; stroke-width:4;}
+  .map-ring-new{fill:none; stroke:var(--accent); stroke-width:5;}
+  .map-ring-out{fill:none; stroke:var(--text); stroke-width:4; stroke-dasharray:7 6; opacity:.85;}
+  .map-wall-label{font-family:var(--font-head); font-weight:700; fill:#efe7d2; paint-order:stroke; stroke:#15120d; stroke-width:7px; text-anchor:middle; dominant-baseline:middle; opacity:.9;}
+  .map-spot{fill:none; stroke:var(--accent); stroke-width:6; opacity:0;}
+  .map-spot.on{animation:spot 2.4s ease-out infinite;}
+  @keyframes spot{0%{opacity:1; stroke-width:9;} 100%{opacity:0; stroke-width:2;}}
+  .map-spot-core{fill:none; stroke:#fff; stroke-width:5; opacity:0; transition:opacity .4s;}
+  .map-spot-core.on{opacity:1;}
+  .map-legend{display:flex; gap:18px; justify-content:center; font-size:15px; color:var(--text-dim); margin-top:14px;}
+  .map-legend i{display:inline-block; width:18px; height:18px; border-radius:50%; vertical-align:-3px; margin-right:7px; background:var(--text-faint);}
+  .map-legend i.new{box-shadow:0 0 0 3px var(--accent);}
+  .map-legend i.out{outline:3px dashed var(--text); outline-offset:1px;}
+
+  /* ---------- lijsten rechts ---------- */
+  .climb-list{list-style:none; margin:0; padding:0;}
+  .climb-row{
+    display:grid; grid-template-columns:24px 62px 1fr auto; align-items:center; gap:11px;
+    height:58px; padding:0 10px; border-radius:10px; transition:background .4s, box-shadow .4s;
+  }
+  .climb-row + .climb-row{border-top:1px solid var(--border-soft);}
+  .climb-row.spot{background:var(--card-2); box-shadow:inset 4px 0 0 var(--accent);}
+  .climb-row.spot + .climb-row{border-top-color:transparent;}
+  .climb-main{min-width:0;}
+  .climb-row .grade-tape{font-size:20px; min-width:2.6em; padding:4px 6px 3px;}
+  .climb-name{font:600 22px/1.15 var(--font-body); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
+  .climb-wall{font-size:15px; color:var(--text-faint); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
+  .climb-meta{font:600 18px/1.1 var(--font-num); color:var(--text-dim); text-align:right; white-space:nowrap; font-variant-numeric:tabular-nums;}
+  .climb-meta.hot{color:var(--accent);}
+  .stars{color:var(--gold); letter-spacing:0; font-size:15px; margin-left:6px;}
+  .stars .off{color:var(--border);}
+  .empty-line{font-size:18px; color:var(--text-faint); padding:10px 12px;}
+
+  /* grades in de hal */
+  .dist{display:flex; align-items:flex-end; gap:8px; height:150px; padding:0 4px;}
+  .dist .b{flex:1; display:flex; flex-direction:column; align-items:center; justify-content:flex-end; height:100%; gap:6px;}
+  .dist .bar{width:100%; border-radius:6px 6px 2px 2px; background:linear-gradient(180deg, var(--accent), #b9431a); min-height:4px;}
+  .dist .n{font:700 17px/1 var(--font-num); color:var(--text-dim);}
+  .dist .g{font:700 19px/1 var(--font-head); color:var(--text);}
+
+  footer.ticker{position:absolute; right:48px; bottom:10px; font:13px/1 var(--font-mono); color:var(--text-faint);}
+
+  /* meldingen */
+  #message{position:absolute; top:118px; right:0; bottom:0; left:0; display:flex; align-items:center; justify-content:center; text-align:center; padding:80px;}
+  #message .box{max-width:1000px;}
+  #message h2{font:700 54px/1.1 var(--font-head); text-transform:uppercase; margin:0 0 18px;}
+  #message p{font-size:28px; color:var(--text-dim);}
+  .hidden{display:none !important;}
+
+  /* ---------- schakelaar Ranglijst / Routes (in de kop) ---------- */
+  .switch{display:inline-flex; gap:4px; padding:3px; margin-top:6px; border-radius:9px; background:var(--bg); border:1px solid var(--border); align-self:flex-start;}
+  .switch button{
+    all:unset; cursor:pointer; padding:6px 16px 5px; border-radius:6px;
+    font:700 16px/1 var(--font-head); text-transform:uppercase; letter-spacing:.12em; color:var(--text-faint);
+  }
+  .switch button.on{background:var(--accent); color:var(--accent-ink);}
+  body.pointer{cursor:default;}
+  #stage[data-view="routes"] #main{display:none;}
+  #stage[data-view="rank"] #routes{display:none;}
+
+  /* ---------- weergave Routes ---------- */
+  #routes{display:grid; grid-template-columns:1150px 1fr; grid-template-rows:1fr 58px; column-gap:36px; row-gap:14px; padding:30px 44px 16px; min-height:0;}
+  .rv-left{display:flex; flex-direction:column; gap:22px; min-height:0;}
+  #rv-map-plate{padding:20px 22px; flex:none;}
+  #rv-map{position:relative; width:100%; aspect-ratio:2.65; }
+  #rv-map > svg{position:absolute; inset:0; width:100%; height:100%; overflow:visible;}
+  .rv-base{filter:invert(1) sepia(.25) brightness(.78) contrast(1.05);}
+  #rv-map .map-dot{transition:opacity .5s;}
+  #rv-map.focus .map-dot{opacity:.18;}
+  #rv-map.focus .map-dot.hi{opacity:1;}
+  #rv-map.focus .map-ring-new, #rv-map.focus .map-ring-out{opacity:.15;}
+  .map-wall-label.hi{fill:var(--accent);}
+  .map-pin circle{fill:var(--accent); stroke:#15120d; stroke-width:6;}
+  .map-pin text{font-family:var(--font-num); font-weight:700; fill:var(--accent-ink); text-anchor:middle; dominant-baseline:central;}
+  .map-pulse{fill:none; stroke:var(--accent); stroke-width:6; animation:spot 2.4s ease-out infinite;}
+
+  /* deze week (onder de kaart) */
+  .rv-week{flex:1; display:grid; grid-template-columns:330px 1fr; gap:26px; min-height:0;}
+  .rv-stats{display:flex; flex-direction:column; justify-content:space-between; gap:12px;}
+  .rv-stat{padding:14px 22px 12px; flex:1; display:flex; flex-direction:column; justify-content:center;}
+  .rv-stat b{font:700 52px/1 var(--font-num); font-variant-numeric:tabular-nums;}
+  .rv-stat.hot b{color:var(--accent);}
+  .rv-stat span{font:600 16px/1.2 var(--font-head); color:var(--text-dim); text-transform:uppercase; letter-spacing:.08em; margin-top:5px;}
+  .rv-stat em{font-style:normal; text-transform:none; letter-spacing:0; color:var(--text-faint);}
+  .rv-days-plate{padding:22px 26px 14px; display:flex; flex-direction:column; min-height:0;}
+  .rv-days-plate .tape-h{margin-bottom:10px;}
+  .days{flex:1; display:flex; align-items:flex-end; gap:16px; min-height:0;}
+  .day{flex:1; height:100%; display:flex; flex-direction:column; align-items:center; justify-content:flex-end; gap:7px;}
+  .day .n{font:700 24px/1 var(--font-num); color:var(--text-dim); font-variant-numeric:tabular-nums;}
+  .day .bar{width:100%; border-radius:6px 6px 2px 2px; background:linear-gradient(180deg, #8a7a5c, #574b35); min-height:4px;}
+  .day.today .bar{background:linear-gradient(180deg, var(--accent), #b9431a);}
+  .day.today .n{color:var(--accent);}
+  .day.unknown .bar{background:repeating-linear-gradient(135deg, var(--border) 0 6px, transparent 6px 12px); height:30% !important;}
+  .day.future .bar{background:none; border-bottom:2px solid var(--border);}
+  .day.future .d{opacity:.45;}
+  .day .d{font:700 18px/1 var(--font-head); text-transform:uppercase;}
+  .rv-week-note{font-size:14px; color:var(--text-faint); margin-top:8px;}
+
+  /* rechterkolom: wisselende lijsten */
+  .rv-slides{position:relative; min-height:0;}
+  .rv-slide{
+    position:absolute; inset:0; display:flex; flex-direction:column; min-height:0;
+    opacity:0; visibility:hidden; transform:translateX(30px);
+    transition:opacity .5s ease, transform .5s cubic-bezier(.2,.7,.3,1), visibility 0s linear .5s;
+  }
+  .rv-slide.active{opacity:1; visibility:visible; transform:none; transition:opacity .5s ease, transform .5s cubic-bezier(.2,.7,.3,1);}
+  .rv-slide .tape-h{font-size:26px; padding:8px 22px 7px 18px; margin-bottom:18px;}
+  .rv-slide .climb-list{flex:none;}
+  .rv-slide .climb-row{height:76px; grid-template-columns:28px 72px 1fr auto;}
+  .rv-slide .climb-row .hold{width:28px; height:24px;}
+  .rv-slide .climb-row .grade-tape{font-size:23px;}
+  .rv-slide .climb-name{font-size:26px;}
+  .rv-slide .climb-wall{font-size:17px;}
+  .rv-slide .climb-meta{font-size:22px;}
+  .rv-slide .climb-meta small{font:600 15px/1 var(--font-body); color:var(--text-faint); margin-left:4px;}
+  .rv-sub{font-size:17px; color:var(--text-faint); margin:-6px 2px 10px; line-height:1.35;}
+  .ch{display:grid; grid-template-columns:62px 1fr auto; align-items:center; gap:18px; padding:18px 22px; margin-bottom:16px; border-radius:12px; background:var(--card); border:1px solid var(--border-soft); transition:background .4s, box-shadow .4s;}
+  .ch.spot{background:var(--card-2); box-shadow:inset 5px 0 0 var(--accent);}
+  .ch-num{width:56px; height:56px; border-radius:50%; display:flex; align-items:center; justify-content:center; font:700 32px/1 var(--font-num); color:var(--accent-ink); background:var(--accent); box-shadow:inset -3px -3px 0 rgba(0,0,0,.25), inset 2px 2px 0 rgba(255,255,255,.4);}
+  .ch-main{min-width:0;}
+  .ch-level{font:700 22px/1 var(--font-head); text-transform:uppercase; letter-spacing:.06em; color:var(--text-dim);}
+  .ch-level small{font:400 16px/1 var(--font-body); text-transform:none; letter-spacing:0; color:var(--text-faint); margin-left:8px;}
+  .ch-route{display:flex; align-items:center; gap:12px; margin-top:10px; min-width:0;}
+  .ch-route .grade-tape{font-size:26px;}
+  .ch-route .nm{font:600 26px/1.1 var(--font-body); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
+  .ch-route + .climb-wall{margin-top:4px;}
+  .ch-stat{text-align:right;}
+  .ch-stat b{display:block; font:700 36px/1 var(--font-num); color:var(--accent);}
+  .ch-stat span{font-size:15px; color:var(--text-faint);}
+  .wall-row{display:grid; grid-template-columns:1fr auto 120px; align-items:center; gap:14px; height:51px; padding:0 12px; border-radius:8px; transition:background .4s, box-shadow .4s;}
+  .wall-row + .wall-row{border-top:1px solid var(--border-soft);}
+  .wall-row.spot{background:var(--card-2); box-shadow:inset 4px 0 0 var(--accent);}
+  .wall-row .wn{font:700 22px/1 var(--font-head); text-transform:uppercase; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
+  .wall-row .wr{font-size:16px; color:var(--text-faint); white-space:nowrap;}
+  .wall-row .wt{font:700 21px/1 var(--font-num); text-align:right; color:var(--text-dim); white-space:nowrap;}
+  .wall-row .wt small{font:600 13px/1 var(--font-body); color:var(--text-faint); margin-left:4px;}
+  .wall-row.spot .wt{color:var(--accent);}
+
+  #rv-nav{grid-column:1 / -1; display:grid; grid-auto-flow:column; grid-auto-columns:1fr; gap:8px;}
+  .nav-tab{
+    position:relative; overflow:hidden; display:flex; align-items:center; justify-content:center; border-radius:8px;
+    font:700 16px/1 var(--font-head); text-transform:uppercase; letter-spacing:.06em; color:var(--text-faint);
+    background:var(--bg-alt); border:1px solid var(--border-soft);
+  }
+  .nav-tab.active{color:var(--text); border-color:var(--accent); background:var(--card-2);}
+  .nav-tab .bar{position:absolute; left:0; bottom:0; height:4px; width:0; background:var(--accent);}
+  .nav-tab.active .bar{animation:fill var(--slide-ms) linear forwards;}
+  @media (prefers-reduced-motion: reduce){
+    *{animation:none !important; transition:none !important;}
+  }
+</style>
+</head>
+<body>
+<div id="stage" data-view="rank">
+  <header>
+    <div class="brand">
+      <div class="gym" id="gym-name">In de hal<span class="dot">.</span></div>
+      <div class="switch" id="switch"><button data-view="rank">Ranglijst</button><button data-view="routes">Routes</button></div>
+    </div>
+    <div class="headline" id="headline"></div>
+    <div class="clock">
+      <div class="time" id="clock-time">--:--</div>
+      <div class="date" id="clock-date"></div>
+    </div>
+  </header>
+
+  <main id="main" class="hidden">
+    <div class="col">
+      <h2 class="tape-h">Ranglijst</h2>
+      <div class="plate" id="rank-plate"><span class="bolt-b"></span>
+        <div class="rank-tabs" id="rank-tabs"></div>
+        <div class="rank-caption" id="rank-caption"></div>
+        <ol class="rank-list" id="rank-list"></ol>
+      </div>
+      <div class="note" id="rank-note"></div>
+    </div>
+
+    <div class="col">
+      <h2 class="tape-h alt">Wandkaart</h2>
+      <div class="plate" id="map-plate"><span class="bolt-b"></span>
+        <div class="map-box" id="map-box"></div>
+        <div class="map-legend"><span><i class="new"></i>nieuw</span><span><i class="out"></i>gaat eruit</span></div>
+      </div>
+    </div>
+
+    <div class="split">
+      <div class="col">
+        <div class="block">
+          <h2 class="tape-h">Nieuw geplaatst</h2>
+          <ol class="climb-list" id="new-list"></ol>
+        </div>
+        <div class="block">
+          <h2 class="tape-h alt">Laatste kans</h2>
+          <ol class="climb-list" id="out-list"></ol>
+        </div>
+      </div>
+      <div class="col">
+        <div class="block">
+          <h2 class="tape-h">Populairst</h2>
+          <ol class="climb-list" id="popular-list"></ol>
+        </div>
+        <div class="block">
+          <h2 class="tape-h alt">Best beoordeeld</h2>
+          <ol class="climb-list" id="rated-list"></ol>
+        </div>
+        <div class="block">
+          <h2 class="tape-h">Grades in de hal</h2>
+          <div class="dist" id="dist"></div>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <!-- weergave Routes: grote kaart + deze week links, wisselende lijsten rechts -->
+  <section id="routes">
+    <div class="rv-left">
+      <div class="plate" id="rv-map-plate"><span class="bolt-b"></span><div id="rv-map"></div></div>
+      <div class="rv-week">
+        <div class="rv-stats" id="rv-stats"></div>
+        <div class="plate rv-days-plate"><span class="bolt-b"></span>
+          <h2 class="tape-h alt">Tops per dag</h2>
+          <div class="days" id="rv-days"></div>
+          <div class="rv-week-note" id="rv-week-note"></div>
+        </div>
+      </div>
+    </div>
+    <div class="rv-slides" id="rv-slides"></div>
+    <nav id="rv-nav"></nav>
+  </section>
+
+  <div id="message"><div class="box"><h2>Even laden…</h2><p></p></div></div>
+  <footer class="ticker" id="updated"></footer>
+</div>
+
+<script>
+(() => {
+  "use strict";
+  const ROTATE_MS = 12000;          // ranglijst: volgende lijst
+  const SPOT_MS = 6000;             // "nieuw geplaatst": volgende route in de kijker
+  const DATA_REFRESH_MS = 15 * 60e3; // nieuwe data ophalen
+  const RELOAD_MS = 6 * 3600e3;     // hele pagina herladen (nieuwe versie van deze pagina)
+  const NEW_DAYS = 14, OUT_DAYS = 21, LIST_LEN = 5, NEW_LEN = 8, OUT_LEN = 4;
+  const RANK_VIEWS = [
+    {key: "grade", tab: "Iedereen", caption: "Hoogste niveau van de hal"},
+    {key: "grade_female", tab: "Dames", caption: "Hoogste niveau · dames"},
+    {key: "grade_male", tab: "Heren", caption: "Hoogste niveau · heren"},
+    {key: "tops", tab: "Meeste tops", caption: "Wie heeft de meeste routes getopt"},
+    {key: "week", tab: "Deze week", caption: "Meeste tops deze week (vanaf maandag)"},
+  ];
+  const $ = id => document.getElementById(id);
+  const esc = s => String(s == null ? "" : s).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+  const svgNS = "http://www.w3.org/2000/svg";
+
+  // n = wisselen tussen Ranglijst en Routes; ←/→ = vorig/volgend scherm bij Routes
+  addEventListener("keydown", e => {
+    if (e.key === "n" || e.key === "N") setView(view === "routes" ? "rank" : "routes");
+    else if (view === "routes" && e.key === "ArrowRight") rvGo(rvIndex + 1);
+    else if (view === "routes" && e.key === "ArrowLeft") rvGo(rvIndex - 1);
+  });
+
+  // ---------- podium schalen + pixelverschuiving tegen inbranden ----------
+  let shift = 0;
+  function fitStage() {
+    const s = Math.min(innerWidth / 1920, innerHeight / 1080);
+    const dx = (innerWidth - 1920 * s) / 2, dy = (innerHeight - 1080 * s) / 2;
+    const off = [[0, 0], [2, 1], [1, 3], [-2, 2], [-1, -2]][shift % 5];
+    $("stage").style.transform = `translate(${dx + off[0]}px, ${dy + off[1]}px) scale(${s})`;
+  }
+  addEventListener("resize", fitStage);
+  setInterval(() => { shift++; fitStage(); }, 20 * 60e3);
+  fitStage();
+
+  // ---------- klok ----------
+  function tick() {
+    const now = new Date();
+    $("clock-time").textContent = now.toLocaleTimeString("nl-NL", {hour: "2-digit", minute: "2-digit"});
+    $("clock-date").textContent = now.toLocaleDateString("nl-NL", {weekday: "long", day: "numeric", month: "long"});
+  }
+  tick(); setInterval(tick, 5000);
+
+  // ---------- data laden ----------
+  // Online staat de data versleuteld; de sleutel zit in de link (#…) en gaat
+  // dus nooit naar de server. Lokaal (zonder #) gewoon data/hal.json.
+  const b64url = s => Uint8Array.from(atob(s.replace(/-/g, "+").replace(/_/g, "/") + "===".slice((s.length + 3) % 4)), c => c.charCodeAt(0));
+  async function loadData() {
+    const key = location.hash.slice(1).replace(/^k=/, "");
+    const bust = "?t=" + Date.now();
+    if (!key) {
+      const r = await fetch("data/hal.json" + bust, {cache: "no-store"});
+      if (!r.ok) throw new Error(r.status === 404 ? "nokey" : "HTTP " + r.status);
+      return r.json();
+    }
+    const r = await fetch("data/hal.enc.json" + bust, {cache: "no-store"});
+    if (!r.ok) throw new Error("HTTP " + r.status);
+    const enc = await r.json();
+    const k = await crypto.subtle.importKey("raw", b64url(key), "AES-GCM", false, ["decrypt"]);
+    const plain = await crypto.subtle.decrypt({name: "AES-GCM", iv: b64url(enc.iv)}, k, b64url(enc.ct));
+    return JSON.parse(new TextDecoder().decode(plain));
+  }
+
+  function showMessage(title, text) {
+    $("main").classList.add("hidden");
+    $("message").classList.remove("hidden");
+    $("message").querySelector("h2").textContent = title;
+    $("message").querySelector("p").textContent = text;
+  }
+
+  // ---------- helpers ----------
+  const DAY = 864e5;
+  const today = () => { const d = new Date(); d.setHours(0, 0, 0, 0); return d; };
+  const daysFrom = iso => Math.round((new Date(iso + "T00:00:00") - today()) / DAY);
+  function agoLabel(iso) {
+    const d = -daysFrom(iso);
+    return d <= 0 ? "vandaag" : d === 1 ? "gisteren" : d < 14 ? `${d} dagen` : `${Math.round(d / 7)} weken`;
+  }
+  function leftLabel(iso) {
+    const d = daysFrom(iso);
+    return d <= 0 ? "laatste dag" : d === 1 ? "nog 1 dag" : `nog ${d} dagen`;
+  }
+  function holdStyle(c) {
+    const a = c.hold_color || "#888";
+    return c.hold_color_secondary ? `background:linear-gradient(135deg, ${a} 50%, ${c.hold_color_secondary} 50%)` : `background:${a}`;
+  }
+  function stars(n) {
+    const full = Math.round(n);
+    return `${n.toLocaleString("nl-NL", {minimumFractionDigits: 1})}<span class="stars">${"★".repeat(full)}<span class="off">${"★".repeat(Math.max(0, 5 - full))}</span></span>`;
+  }
+  const typeNoun = (t, n) => t === "boulder" ? (n === 1 ? "boulder" : "boulders") : (n === 1 ? "route" : "routes");
+
+  // ---------- render ----------
+  let DATA = null, activeType = "route", rankIndex = 0, rankTimer = null, spotTimer = null, spotIndex = 0;
+  let newClimbs = [];
+
+  function render(data) {
+    DATA = data;
+    activeType = (data.types || [])[0] || "route";
+    const climbs = (data.climbs || []).filter(c => c.type === activeType);
+    $("message").classList.add("hidden");
+    $("main").classList.remove("hidden");
+    $("gym-name").innerHTML = `${esc(data.gym && data.gym.name || "In de hal")}<span class="dot">.</span>`;
+
+    newClimbs = climbs.filter(c => c.in_at && -daysFrom(c.in_at) <= NEW_DAYS * 2)
+      .sort((a, b) => b.in_at.localeCompare(a.in_at)).slice(0, NEW_LEN);
+    const leaving = climbs.filter(c => c.out_planned_at && daysFrom(c.out_planned_at) <= OUT_DAYS)
+      .sort((a, b) => a.out_planned_at.localeCompare(b.out_planned_at));
+
+    renderHeadline(climbs, leaving);
+    renderRankings();
+    renderMap(climbs);
+    renderClimbList("new-list", newClimbs, c => `<span class="climb-meta${-daysFrom(c.in_at) <= 2 ? " hot" : ""}">${agoLabel(c.in_at)}</span>`, "Deze weken niets nieuws.");
+    renderClimbList("out-list", leaving.slice(0, OUT_LEN), c => `<span class="climb-meta hot">${leftLabel(c.out_planned_at)}</span>`, "Voorlopig gaat er niets uit.");
+    const popular = [...climbs].filter(c => c.ticks > 0).sort((a, b) => b.ticks - a.ticks).slice(0, LIST_LEN);
+    renderClimbList("popular-list", popular, c => `<span class="climb-meta">${c.ticks}<small style="font-size:14px;color:var(--text-faint)"> tops</small></span>`, "Nog geen tops.");
+    const rated = [...climbs].filter(c => c.stars && c.ticks >= 10).sort((a, b) => b.stars - a.stars || b.ticks - a.ticks).slice(0, LIST_LEN);
+    renderClimbList("rated-list", rated, c => `<span class="climb-meta">${stars(c.stars)}</span>`, "Nog te weinig beoordelingen.");
+    renderDist(climbs);
+
+    const gen = data.generated_at ? new Date(data.generated_at) : null;
+    $("updated").textContent = gen ? `bijgewerkt ${gen.toLocaleDateString("nl-NL", {day: "numeric", month: "short"})} ${gen.toLocaleTimeString("nl-NL", {hour: "2-digit", minute: "2-digit"})}` : "";
+    startSpotlight();
+    try { renderRoutes(); } catch (e) { console.error(e); } // Routes mag de Ranglijst niet breken
+  }
+
+  function renderHeadline(climbs, leaving) {
+    const fresh = climbs.filter(c => c.in_at && -daysFrom(c.in_at) <= NEW_DAYS).length;
+    const total = (DATA.climbers_total || {})[activeType];
+    const top = [...climbs].sort((a, b) => (b.grade_value || 0) - (a.grade_value || 0))[0];
+    const stats = [
+      [climbs.length, typeNoun(activeType, climbs.length), ""],
+      [fresh, "nieuw (2 wk)", fresh ? "hot" : ""],
+      [leaving.length, "eruit (3 wk)", ""],
+      top ? [esc(top.grade), "moeilijkste", ""] : null,
+      total ? [total.toLocaleString("nl-NL"), "klimmers", ""] : null,
+    ].filter(Boolean);
+    rankHeadline = stats;
+    updateHeadline();
+  }
+
+  // ranglijst: roteert door de beschikbare lijsten
+  function rankViews() {
+    const lists = (DATA.rankings || {})[activeType] || {};
+    return RANK_VIEWS.filter(v => (lists[v.key] || []).length);
+  }
+  function renderRankings() {
+    const views = rankViews();
+    clearTimeout(rankTimer);
+    if (!views.length) {
+      $("rank-tabs").innerHTML = "";
+      $("rank-list").innerHTML = '<li class="empty-line">Nog geen ranglijst opgehaald.</li>';
+      return;
+    }
+    rankIndex %= views.length;
+    showRankView(views, false);
+    const cmp = DATA.ranking_compared_to;
+    $("rank-note").innerHTML = `Niveau = TopLogger-grade (gemiddelde van je 10 beste tops, laatste 2 maanden).`
+      + (cmp ? ` Pijltjes: verschil met ${new Date(cmp + "T00:00:00").toLocaleDateString("nl-NL", {day: "numeric", month: "long"})}.` : "")
+      + ` Zichtbaar profiel in TopLogger = meedoen.`;
+  }
+  function showRankView(views, animate) {
+    document.documentElement.style.setProperty("--rotate-ms", ROTATE_MS + "ms");
+    const view = views[rankIndex];
+    $("rank-tabs").innerHTML = views.map((v, i) => `<div class="rank-tab${i === rankIndex ? " active" : ""}">${v.tab}<span class="bar"></span></div>`).join("");
+    $("rank-caption").textContent = view.caption;
+    const rows = DATA.rankings[activeType][view.key];
+    const isTops = view.key === "tops" || view.key === "week";
+    const list = $("rank-list");
+    list.classList.remove("swap");
+    list.innerHTML = rows.map((r, i) => {
+      let move = "";
+      if (r.move === "new") move = '<span class="move new">NIEUW</span>';
+      else if (typeof r.move === "number") move = r.move > 0 ? `<span class="move up">▲ ${r.move}</span>` : r.move < 0 ? `<span class="move down">▼ ${-r.move}</span>` : '<span class="move same">–</span>';
+      return `<li class="rank-row p${r.rank}" style="animation-delay:${i * 45}ms">
+        <span class="rank-pos">${r.rank}</span>
+        <span class="rank-name">${esc(r.name)}</span>
+        <span class="grade-tape">${esc(r.grade || "–")}</span>
+        <span class="rank-tops${isTops ? " lead" : ""}">${r.tops}<small>tops</small></span>
+        ${move || "<span></span>"}
+      </li>`;
+    }).join("");
+    if (animate) { void list.offsetWidth; list.classList.add("swap"); }
+    if (views.length > 1) rankTimer = setTimeout(() => { rankIndex = (rankIndex + 1) % views.length; showRankView(views, true); }, ROTATE_MS);
+  }
+
+  function renderClimbList(id, rows, metaFn, emptyText) {
+    $(id).innerHTML = rows.length ? rows.map(c => `
+      <li class="climb-row" data-id="${esc(c.id)}">
+        <span class="hold" style="${holdStyle(c)}"></span>
+        <span class="grade-tape">${esc(c.grade || "?")}</span>
+        <span class="climb-main"><div class="climb-name">${esc(c.name || "Naamloos")}</div><div class="climb-wall">${esc(c.wall || "")}</div></span>
+        ${metaFn(c)}
+      </li>`).join("") : `<li class="empty-line">${emptyText}</li>`;
+  }
+
+  function renderDist(climbs) {
+    const buckets = new Map();
+    for (const c of climbs) {
+      const m = /^(\d)/.exec(c.grade || "");
+      if (!m) continue;
+      const k = Math.min(Math.max(+m[1], 4), 8);
+      buckets.set(k, (buckets.get(k) || 0) + 1);
+    }
+    const keys = [4, 5, 6, 7, 8].filter(k => buckets.has(k));
+    const max = Math.max(1, ...buckets.values());
+    $("dist").innerHTML = keys.map(k => `
+      <div class="b"><span class="n">${buckets.get(k)}</span><div class="bar" style="height:${Math.round(buckets.get(k) / max * 100)}%"></div>
+      <span class="g">${k === 4 ? "≤4" : k === 8 ? "8+" : k}</span></div>`).join("");
+  }
+
+  // wandkaart: plattegrond (omgekeerd) + stippen in een eigen laag erboven
+  function renderMap(climbs) {
+    const box = $("map-box");
+    const map = DATA.map;
+    box.innerHTML = "";
+    if (!map) { box.innerHTML = '<div class="empty-line">Geen plattegrond.</div>'; return; }
+    box.insertAdjacentHTML("beforeend", map.floorplan_svg);
+    const base = box.querySelector("svg");
+    base.id = "map-base";
+    base.removeAttribute("width"); base.removeAttribute("height");
+    base.setAttribute("preserveAspectRatio", "xMidYMid meet");
+    const viewBox = base.getAttribute("viewBox");
+    const over = document.createElementNS(svgNS, "svg");
+    over.setAttribute("viewBox", viewBox);
+    over.setAttribute("preserveAspectRatio", "xMidYMid meet");
+    box.appendChild(over);
+
+    const W = map.bg_width, H = map.bg_height, r = W / 52;
+    for (const c of climbs) {
+      if (c.position_x == null || c.position_y == null) continue;
+      const cx = c.position_x * W, cy = c.position_y * H;
+      const isNew = c.in_at && -daysFrom(c.in_at) <= NEW_DAYS;
+      const isOut = c.out_planned_at && daysFrom(c.out_planned_at) <= OUT_DAYS;
+      if (isNew || isOut) {
+        const ring = document.createElementNS(svgNS, "circle");
+        ring.setAttribute("cx", cx); ring.setAttribute("cy", cy); ring.setAttribute("r", r * 1.55);
+        ring.setAttribute("class", isNew ? "map-ring-new" : "map-ring-out");
+        over.appendChild(ring);
+      }
+      const dot = document.createElementNS(svgNS, "circle");
+      dot.setAttribute("cx", cx); dot.setAttribute("cy", cy); dot.setAttribute("r", r);
+      dot.setAttribute("fill", c.hold_color || "#999"); dot.setAttribute("class", "map-dot");
+      dot.dataset.id = c.id;
+      over.appendChild(dot);
+    }
+    // wandnamen boven de stippen, anders vallen ze weg achter de routes langs de wand
+    for (const w of map.walls || []) {
+      if (w.label_x == null || w.label_y == null || !w.name) continue;
+      const t = document.createElementNS(svgNS, "text");
+      t.setAttribute("x", w.label_x * W); t.setAttribute("y", w.label_y * H);
+      t.setAttribute("font-size", W / 22); t.setAttribute("class", "map-wall-label");
+      t.textContent = w.name;
+      over.appendChild(t);
+    }
+    // aanwijzer voor de route "in de kijker"
+    for (const cls of ["map-spot", "map-spot-core"]) {
+      const s = document.createElementNS(svgNS, "circle");
+      s.setAttribute("r", r * (cls === "map-spot" ? 4 : 2.3)); s.setAttribute("class", cls); s.id = cls;
+      over.appendChild(s);
+    }
+  }
+
+  // "in de kijker": loopt door de nieuwe routes en wijst ze aan op de kaart
+  function startSpotlight() {
+    clearInterval(spotTimer);
+    spotIndex = 0;
+    if (!newClimbs.length) return;
+    const step = () => {
+      const c = newClimbs[spotIndex % newClimbs.length];
+      document.querySelectorAll("#new-list .climb-row").forEach(li => li.classList.toggle("spot", li.dataset.id === c.id));
+      const dot = [...document.querySelectorAll("#map-box .map-dot")].find(d => d.dataset.id === c.id);
+      for (const id of ["map-spot", "map-spot-core"]) {
+        const s = document.getElementById(id);
+        if (!s) continue;
+        s.classList.remove("on");
+        if (dot) {
+          s.setAttribute("cx", dot.getAttribute("cx")); s.setAttribute("cy", dot.getAttribute("cy"));
+          void s.getBoundingClientRect(); s.classList.add("on");
+        }
+      }
+      spotIndex++;
+    };
+    step();
+    spotTimer = setInterval(step, SPOT_MS);
+  }
+
+  // ================= weergave Routes (zonder namen) =================
+  // Grote, liggende plattegrond + "deze week" links; rechts wisselende
+  // lijsten die hun routes één voor één op de kaart aanwijzen.
+  const RV_SLIDE_MS = 16000, RV_LIST_LEN = 8, RV_WALLS = 14;
+  const nf = n => n.toLocaleString("nl-NL");
+  const byGrade = (a, b) => (b.grade_value || 0) - (a.grade_value || 0);
+  let view = new URLSearchParams(location.search).get("weergave") === "routes" ? "routes" : "rank";
+  let rankHeadline = [], routesHeadline = [];
+  let rvClimbs = [], rvAct = {}, rvSlides = [], rvIndex = 0, rvTimer = null, rvSpotTimer = null;
+  const rvHasWeek = () => rvAct.week != null;
+
+  function updateHeadline() {
+    const stats = view === "routes" ? routesHeadline : rankHeadline;
+    $("headline").innerHTML = stats.map(([v, l, cls]) => `<div class="hstat ${cls}"><b>${v}</b><span>${l}</span></div>`).join("");
+  }
+  function setView(v) {
+    view = v;
+    $("stage").dataset.view = v;
+    document.querySelectorAll("#switch button").forEach(b => b.classList.toggle("on", b.dataset.view === v));
+    // weergave in de link, zodat herladen (elke 6 uur) dezelfde weergave houdt
+    history.replaceState(null, "", (v === "routes" ? "?weergave=routes" : location.pathname) + location.hash);
+    updateHeadline();
+    clearTimeout(rvTimer); clearInterval(rvSpotTimer);
+    if (v === "routes") rvGo(0);
+  }
+  $("switch").addEventListener("click", e => { const b = e.target.closest("button"); if (b) setView(b.dataset.view); });
+  // muis alleen zichtbaar als hij beweegt (tv: geen pijltje in beeld)
+  let pointerTimer = null;
+  addEventListener("mousemove", () => {
+    document.body.classList.add("pointer");
+    clearTimeout(pointerTimer);
+    pointerTimer = setTimeout(() => document.body.classList.remove("pointer"), 3000);
+  });
+
+  function renderRoutes() {
+    rvClimbs = (DATA.climbs || []).filter(c => c.type === activeType);
+    rvAct = (DATA.activity || {})[activeType] || {};
+    const week = rvHasWeek();
+    const topped = week ? rvClimbs.filter(c => c.tops_week > 0) : [];
+    const fresh = rvClimbs.filter(c => c.in_at && -daysFrom(c.in_at) <= NEW_DAYS).length;
+    const hardestWeek = [...topped].sort(byGrade)[0];
+    routesHeadline = [
+      [rvAct.today != null ? nf(rvAct.today) : "–", "tops vandaag", rvAct.today != null ? "hot" : ""],
+      [rvAct.week != null ? nf(rvAct.week) : "–", "tops deze week", ""],
+      [rvClimbs.length, typeNoun(activeType, rvClimbs.length), ""],
+      [fresh, "nieuw (2 wk)", ""],
+      hardestWeek ? [esc(hardestWeek.grade), "zwaarste top (wk)", ""] : null,
+    ].filter(Boolean);
+    buildRotatedMap($("rv-map"));
+    renderRvWeek();
+
+    const newest = rvClimbs.filter(c => c.in_at && -daysFrom(c.in_at) <= NEW_DAYS * 2)
+      .sort((a, b) => b.in_at.localeCompare(a.in_at)).slice(0, RV_LIST_LEN);
+    const leaving = rvClimbs.filter(c => c.out_planned_at && daysFrom(c.out_planned_at) <= OUT_DAYS)
+      .sort((a, b) => a.out_planned_at.localeCompare(b.out_planned_at)).slice(0, RV_LIST_LEN);
+    const popular = week
+      ? [...topped].sort((a, b) => b.tops_week - a.tops_week || byGrade(a, b)).slice(0, RV_LIST_LEN)
+      : rvClimbs.filter(c => c.ticks > 0).sort((a, b) => b.ticks - a.ticks).slice(0, RV_LIST_LEN);
+    const rated = rvClimbs.filter(c => c.stars && c.ticks >= 10).sort((a, b) => b.stars - a.stars || b.ticks - a.ticks).slice(0, RV_LIST_LEN);
+    const hardest = (week ? [...topped] : rvClimbs.filter(c => c.ticks > 0))
+      .sort((a, b) => byGrade(a, b) || (b.tops_week || 0) - (a.tops_week || 0)).slice(0, RV_LIST_LEN);
+    const levels = ((DATA.challenges || {})[activeType] || [])
+      .map(l => ({...l, climb: rvClimbs.find(c => c.id === l.climb_id)})).filter(l => l.climb);
+    rvSlides = [
+      {tab: "Nieuw geplaatst", title: "Nieuw geplaatst", items: newest, empty: "Deze weken niets nieuws.",
+        meta: c => `<span class="climb-meta${-daysFrom(c.in_at) <= 2 ? " hot" : ""}">${agoLabel(c.in_at)}</span>`},
+      {tab: "Laatste kans", title: "Laatste kans", alt: true, items: leaving, empty: "Voorlopig gaat er niets uit.",
+        meta: c => `<span class="climb-meta hot">${leftLabel(c.out_planned_at)}</span>`},
+      {tab: "Populairst", title: week ? "Populairst deze week" : "Populairst", items: popular, empty: "Nog geen tops.",
+        meta: c => `<span class="climb-meta">${week ? c.tops_week : nf(c.ticks)}<small>${week ? "× deze week" : "tops"}</small></span>`},
+      {tab: "Best beoordeeld", title: "Best beoordeeld", alt: true, items: rated, empty: "Nog te weinig beoordelingen.",
+        sub: "Alleen routes die minstens 10 keer getopt zijn.", meta: c => `<span class="climb-meta">${stars(c.stars)}</span>`},
+      {tab: "Uitdaging", title: "Uitdaging van de week", kind: "challenge", items: levels.map(l => l.climb), levels,
+        sub: "Per niveau de route die het minst getopt wordt, maar wel haalbaar is (minstens 3 tops). Elke maandag nieuw."},
+      {tab: "Moeilijkste tops", title: week ? "Moeilijkste tops deze week" : "Moeilijkste getopte routes", alt: true, items: hardest,
+        empty: "Deze week nog niets getopt.",
+        meta: c => `<span class="climb-meta">${week ? c.tops_week + "<small>×</small>" : nf(c.ticks) + "<small>tops</small>"}</span>`},
+      {tab: "Wand voor wand", title: "Wand voor wand", kind: "walls", items: wallRows(),
+        sub: week ? "Tops deze week (vanaf maandag), drukste wand bovenaan." : "Tops van alles wat er nu hangt, drukste wand bovenaan."},
+    ];
+    $("rv-slides").innerHTML = rvSlides.map(renderRvSlide).join("");
+    $("rv-nav").innerHTML = rvSlides.map(s => `<div class="nav-tab">${esc(s.tab)}<span class="bar"></span></div>`).join("");
+    updateHeadline();
+    if (view === "routes") rvGo(rvIndex);
+  }
+
+  function wallRows() {
+    const walls = new Map();
+    for (const c of rvClimbs) {
+      const k = c.wall || "Overig";
+      if (!walls.has(k)) walls.set(k, []);
+      walls.get(k).push(c);
+    }
+    return [...walls].map(([name, list]) => {
+      const graded = list.filter(c => c.grade_value != null).sort((a, b) => a.grade_value - b.grade_value);
+      return {
+        name, ids: list.map(c => c.id), n: list.length,
+        lo: graded.length ? graded[0].grade : null, hi: graded.length ? graded[graded.length - 1].grade : null,
+        tops: list.reduce((s, c) => s + (rvHasWeek() ? (c.tops_week || 0) : c.ticks), 0),
+      };
+    }).sort((a, b) => b.tops - a.tops).slice(0, RV_WALLS);
+  }
+
+  function rvRow(c, meta) {
+    return `<li class="climb-row" data-id="${esc(c.id)}">
+      <span class="hold" style="${holdStyle(c)}"></span>
+      <span class="grade-tape">${esc(c.grade || "?")}</span>
+      <span class="climb-main"><div class="climb-name">${esc(c.name || "Naamloos")}</div><div class="climb-wall">${esc(c.wall || "")}</div></span>
+      ${meta}
+    </li>`;
+  }
+  function challengeRange(l, i, n) {
+    const [lo, hi] = l.range || [];
+    if (!lo || !hi || lo === hi) return lo || "";
+    return i === 0 ? `t/m ${hi}` : i === n - 1 ? `${lo} en hoger` : `${lo} – ${hi}`;
+  }
+  function renderRvSlide(s) {
+    let body;
+    if (s.kind === "challenge") {
+      body = s.levels.length ? s.levels.map((l, i) => {
+        const c = l.climb;
+        const weeks = c.in_at ? Math.max(1, Math.round(-daysFrom(c.in_at) / 7)) : null;
+        return `<div class="ch" data-id="${esc(c.id)}">
+          <span class="ch-num">${i + 1}</span>
+          <div class="ch-main">
+            <div class="ch-level">${esc(l.label)}<small>${esc(challengeRange(l, i, s.levels.length))}</small></div>
+            <div class="ch-route"><span class="hold" style="${holdStyle(c)}"></span><span class="grade-tape">${esc(c.grade || "?")}</span><span class="nm">${esc(c.name || "Naamloos")}</span></div>
+            <div class="climb-wall">${esc(c.wall || "")}${c.stars ? ` · ${stars(c.stars)}` : ""}</div>
+          </div>
+          <div class="ch-stat"><b>${nf(c.ticks)}×</b><span>getopt${weeks ? ` in ${weeks} wk` : ""}</span></div>
+        </div>`;
+      }).join("") : '<div class="empty-line">Deze week geen uitdaging.</div>';
+    } else if (s.kind === "walls") {
+      body = `<div>${s.items.map(w => `<div class="wall-row" data-wall="${esc(w.name)}">
+        <span class="wn">${esc(w.name)}</span>
+        <span class="wr">${w.n} ${typeNoun(activeType, w.n)}${w.lo ? ` · ${esc(w.lo === w.hi ? w.lo : w.lo + " – " + w.hi)}` : ""}</span>
+        <span class="wt">${nf(w.tops)}<small>tops</small></span></div>`).join("")}</div>`;
+    } else {
+      body = `<ol class="climb-list">${s.items.length ? s.items.map(c => rvRow(c, s.meta(c))).join("") : `<li class="empty-line">${s.empty}</li>`}</ol>`;
+    }
+    return `<div class="rv-slide"><h2 class="tape-h${s.alt ? " alt" : ""}">${esc(s.title)}</h2>${s.sub ? `<div class="rv-sub">${esc(s.sub)}</div>` : ""}${body}</div>`;
+  }
+
+  function renderRvWeek() {
+    const sinceNote = rvAct.week_since && rvAct.week_since !== rvAct.week_start
+      ? ` <em>sinds ${new Date(rvAct.week_since + "T00:00:00").toLocaleDateString("nl-NL", {weekday: "long"})}</em>` : "";
+    const stats = [
+      [rvAct.today, "tops vandaag", "hot"],
+      [rvAct.week, "tops deze week" + sinceNote, ""],
+      [rvAct.climbs_topped_week, `${typeNoun(activeType, 2)} getopt (wk)`, ""],
+    ];
+    $("rv-stats").innerHTML = stats.map(([v, l, cls]) => `<div class="plate rv-stat ${v != null ? cls : ""}"><span class="bolt-b"></span><b>${v != null ? nf(v) : "–"}</b><span>${l}</span></div>`).join("");
+    const days = rvAct.days || [];
+    const max = Math.max(1, ...days.map(d => d.tops || 0));
+    $("rv-days").innerHTML = days.map(d => {
+      const known = d.tops != null, isToday = daysFrom(d.date) === 0, future = daysFrom(d.date) > 0;
+      return `<div class="day${isToday ? " today" : ""}${known ? "" : future ? " future" : " unknown"}">
+        <span class="n">${known ? nf(d.tops) : ""}</span>
+        <div class="bar" style="height:${known ? Math.max(1, Math.round(d.tops / max * 100)) : future ? 0 : 30}%"></div>
+        <span class="d">${isToday ? "vandaag" : new Date(d.date + "T00:00:00").toLocaleDateString("nl-NL", {weekday: "short"})}</span>
+      </div>`;
+    }).join("") || '<div class="empty-line">Nog geen dagcijfers.</div>';
+    $("rv-week-note").textContent = (days.some(d => d.tops == null && daysFrom(d.date) <= 0) ? "Gestreept: de teller liep toen nog niet. " : "")
+      + "Tops = afvinkingen in TopLogger, zonder wie ze klom.";
+  }
+
+  // plattegrond liggend: het hoge, smalle plan 90° gedraaid (boven = links),
+  // zodat hij in de breedte veel groter in beeld komt; teksten blijven rechtop
+  function buildRotatedMap(box) {
+    const map = DATA.map;
+    box.innerHTML = "";
+    if (!map) { box.innerHTML = '<div class="empty-line">Geen plattegrond.</div>'; return; }
+    const tmp = document.createElement("div");
+    tmp.innerHTML = map.floorplan_svg;
+    const base = tmp.querySelector("svg");
+    const [minX, minY, vbW, vbH] = base.getAttribute("viewBox").split(/[\s,]+/).map(Number);
+    const svg = document.createElementNS(svgNS, "svg");
+    svg.setAttribute("viewBox", `0 0 ${vbH} ${vbW}`);
+    svg.setAttribute("preserveAspectRatio", "xMidYMid meet");
+    const turn = document.createElementNS(svgNS, "g");
+    turn.setAttribute("transform", `translate(0 ${vbW}) rotate(-90)`);
+    for (const [k, v] of Object.entries({x: 0, y: 0, width: vbW, height: vbH, class: "rv-base"})) base.setAttribute(k, v);
+    turn.appendChild(base);
+    svg.appendChild(turn);
+    box.appendChild(svg);
+    const W = map.bg_width, H = map.bg_height, r = W / 52;
+    const at = (px, py) => [py * H - minY, vbW - (px * W - minX)];
+    const el = (tag, attrs, parent) => {
+      const n = document.createElementNS(svgNS, tag);
+      for (const [k, v] of Object.entries(attrs)) n.setAttribute(k, v);
+      (parent || svg).appendChild(n);
+      return n;
+    };
+    for (const c of rvClimbs) {
+      if (c.position_x == null || c.position_y == null) continue;
+      const [cx, cy] = at(c.position_x, c.position_y);
+      const isNew = c.in_at && -daysFrom(c.in_at) <= NEW_DAYS;
+      const isOut = c.out_planned_at && daysFrom(c.out_planned_at) <= OUT_DAYS;
+      if (isNew || isOut) el("circle", {cx, cy, r: r * 1.55, class: isNew ? "map-ring-new" : "map-ring-out"});
+      el("circle", {cx, cy, r, fill: c.hold_color || "#999", class: "map-dot", "data-id": c.id});
+    }
+    for (const w of map.walls || []) {
+      if (w.label_x == null || w.label_y == null || !w.name) continue;
+      const [x, y] = at(w.label_x, w.label_y);
+      el("text", {x, y, "font-size": W / 24, class: "map-wall-label"}).textContent = w.name;
+    }
+    el("g", {id: "rv-pins"});
+    el("circle", {r: r * 4, class: "map-spot", id: "rv-spot"});
+    el("circle", {r: r * 2.3, class: "map-spot-core", id: "rv-spot-core"});
+    box.dataset.r = r;
+    box._at = at;
+  }
+
+  function rvFocus(ids, wallName) {
+    const box = $("rv-map"), set = new Set(ids || []);
+    box.classList.toggle("focus", !!ids);
+    box.querySelectorAll(".map-dot").forEach(d => d.classList.toggle("hi", set.has(d.dataset.id)));
+    box.querySelectorAll(".map-wall-label").forEach(t => t.classList.toggle("hi", !!wallName && t.textContent === wallName));
+  }
+  function rvSpot(id) {
+    const dot = id && [...$("rv-map").querySelectorAll(".map-dot")].find(d => d.dataset.id === id);
+    for (const sid of ["rv-spot", "rv-spot-core"]) {
+      const s = document.getElementById(sid);
+      if (!s) continue;
+      s.classList.remove("on");
+      if (dot) {
+        s.setAttribute("cx", dot.getAttribute("cx")); s.setAttribute("cy", dot.getAttribute("cy"));
+        void s.getBoundingClientRect(); s.classList.add("on");
+      }
+    }
+  }
+  function rvPins(climbs) {
+    const g = document.getElementById("rv-pins"), box = $("rv-map");
+    if (!g) return;
+    g.innerHTML = "";
+    const pr = +box.dataset.r * 2.6;
+    climbs.forEach((c, i) => {
+      if (c.position_x == null || c.position_y == null) return;
+      const [cx, cy] = box._at(c.position_x, c.position_y);
+      const pin = document.createElementNS(svgNS, "g");
+      pin.setAttribute("class", "map-pin");
+      pin.innerHTML = `<circle cx="${cx}" cy="${cy}" r="${pr}"></circle><text x="${cx}" y="${cy}" font-size="${pr * 1.25}">${i + 1}</text>`;
+      g.appendChild(pin);
+    });
+  }
+
+  function rvGo(i) {
+    if (!rvSlides.length) return;
+    rvIndex = (i + rvSlides.length) % rvSlides.length;
+    const s = rvSlides[rvIndex];
+    const slides = [...document.querySelectorAll(".rv-slide")];
+    const ms = s.kind === "walls" ? Math.max(RV_SLIDE_MS, s.items.length * 2000) : RV_SLIDE_MS;
+    document.documentElement.style.setProperty("--slide-ms", ms + "ms");
+    slides.forEach((el, j) => el.classList.toggle("active", j === rvIndex));
+    document.querySelectorAll("#rv-nav .nav-tab").forEach((t, j) => {
+      t.classList.toggle("active", j === rvIndex);
+      const bar = t.querySelector(".bar"); bar.style.animation = "none"; void bar.offsetWidth; bar.style.animation = "";
+    });
+    clearTimeout(rvTimer); clearInterval(rvSpotTimer);
+    rvPins([]); rvSpot(null); rvFocus(null);
+    if (s.kind === "challenge") { rvFocus(s.items.map(c => c.id)); rvPins(s.items); }
+    const el = slides[rvIndex];
+    const rows = [...el.querySelectorAll(s.kind === "walls" ? ".wall-row" : s.kind === "challenge" ? ".ch" : ".climb-row")];
+    if (rows.length) {
+      let k = 0;
+      const step = () => {
+        const n = k % rows.length;
+        rows.forEach((r, j) => r.classList.toggle("spot", j === n));
+        if (s.kind === "walls") rvFocus(s.items[n].ids, s.items[n].name);
+        else rvSpot(rows[n].dataset.id);
+        k++;
+      };
+      step();
+      rvSpotTimer = setInterval(step, ms / rows.length);
+    }
+    rvTimer = setTimeout(() => rvGo(rvIndex + 1), ms);
+  }
+
+  // ---------- opstarten + verversen ----------
+  async function refresh(first) {
+    try {
+      render(await loadData());
+    } catch (e) {
+      console.error(e);
+      if (!first && DATA) return; // houd de laatste goede data in beeld
+      if (e.message === "nokey") showMessage("Sleutel ontbreekt", "Open dit scherm via de volledige tv-link (met het stuk na de #).");
+      else if (e.name === "OperationError") showMessage("Sleutel klopt niet", "De tv-link is veranderd. Vraag de nieuwe link op.");
+      else showMessage("Geen verbinding", "De haldata kon niet worden geladen. Over een paar minuten opnieuw.");
+      setTimeout(() => refresh(true), 60e3);
+    }
+  }
+  setView(view);
+  refresh(true);
+  setInterval(() => refresh(false), DATA_REFRESH_MS);
+  setTimeout(() => location.reload(), RELOAD_MS);
+})();
+</script>
+</body>
+</html>
