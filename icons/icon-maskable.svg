@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <!-- Maskable variant: zelfde motief, verkleind tot binnen de veilige zone
+       (ca. 20% marge rondom), zodat Android het in elke vorm kan knippen. -->
+  <defs>
+    <pattern id="tape" width="26" height="26" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
+      <rect width="12" height="26" fill="#df4f19"/>
+    </pattern>
+  </defs>
+  <rect width="512" height="512" fill="#e7e2d2"/>
+  <g transform="translate(256 262) scale(.7) translate(-256 -262)">
+    <path d="M250 104c86-6 160 46 158 132-2 58-34 92-70 122-40 34-104 52-160 30-58-23-88-82-76-146 12-70 72-133 148-138z" fill="#df4f19"/>
+    <path d="M168 178c22-40 64-60 104-58" fill="none" stroke="#fff8ef" stroke-width="16" stroke-linecap="round" opacity=".45"/>
+    <circle cx="262" cy="250" r="44" fill="#fff8ef" opacity=".5"/>
+    <circle cx="262" cy="250" r="32" fill="#201c15"/>
+    <rect x="96" y="420" width="320" height="30" rx="4" fill="url(#tape)" opacity=".85"/>
+  </g>
+</svg>
